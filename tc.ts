@@ -17,6 +17,7 @@ export function typeCheckProgram(prog: Program<null>):Program<Type>{
     var env:TypeEnv = {vars: new Map(), funs: new Map(), retType:Type.none};
     prog.fundefs.forEach(fundef =>{
         typedfundefs.push(typeCheckFunDef(fundef, env));
+        returnCheckFunDef(fundef, env);
     })
     typedvarinits = typeCheckVarInits(prog.varinits, env);
     typedstmts = typeCheckStmts(prog.stmts, env);
@@ -24,6 +25,40 @@ export function typeCheckProgram(prog: Program<null>):Program<Type>{
         varinits: typedvarinits,
         fundefs: typedfundefs,
         stmts: typedstmts
+    }
+}
+
+export function returnCheckFunDef(fundef:FunDef<Type>, env:TypeEnv):boolean{
+    var stmts_num = fundef.body.length;
+    var laststmt = fundef.body[stmts_num-1];
+    if(laststmt.tag=="return"){
+        return true;
+    }
+    else{
+        fundef.body.forEach(s =>{
+            if(s.tag=="if"){
+                var pathreturn:boolean[] = [];
+                var laststmt_if = s.ifbody[s.ifbody.length-1];
+                if(laststmt_if.tag!=="return"){
+                    throw new Error("Not all paths return");
+                }
+                for(var i=0;i<s.elifbody.length;i++){
+                    var lenarr = s.elifbody[i].length;
+                    if (s.elifbody[i][lenarr-1].tag!== "return"){
+                        throw new Error("Not all paths return");
+                    }
+                }
+                var laststmt_else = s.elsebody[s.elsebody.length-1];
+                if(!laststmt_else){
+                    throw new Error("Not all paths return");
+                }
+                if(laststmt_else.tag!=="return"){
+                    throw new Error("Not all paths return");
+                }
+                
+            }
+        })
+        return true;
     }
 }
 

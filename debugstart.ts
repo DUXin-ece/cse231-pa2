@@ -5,10 +5,16 @@ import * as compiler from './compiler';
 
 
 
-const source =`x:int = 3
-while x>0:
-    print(x)
-    x= x-1`;
+const source =`def f(x:int)->int:
+    y:int = 4
+    while y>2:
+        y=y-1
+        print(y)
+        if y==1:
+            return 1
+    return 0
+
+print(f(4))`;
 
 console.log(source);
 
