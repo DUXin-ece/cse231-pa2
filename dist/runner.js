@@ -3,25 +3,6 @@
 //
 // - https://github.com/AssemblyScript/wabt.js/
 // - https://developer.mozilla.org/en-US/docs/WebAssembly/Using_the_JavaScript_API
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -64,8 +45,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.run = void 0;
 var wabt_1 = __importDefault(require("wabt"));
-var compiler = __importStar(require("./compiler"));
-var parser_1 = require("./parser");
 // NOTE(joe): This is a hack to get the CLI Repl to run. WABT registers a global
 // uncaught exn handler, and this is not allowed when running the REPL
 // (https://nodejs.org/api/repl.html#repl_global_uncaught_exceptions). No reason
@@ -87,32 +66,20 @@ if (typeof process !== "undefined") {
         }
     };
 }
-function run(source, config) {
+function run(watSource, config) {
     return __awaiter(this, void 0, void 0, function () {
-        var wabtInterface, parsed, returnType, returnExpr, lastExpr, compiled, importObject, wasmSource, myModule, asBinary, wasmModule, result;
+        var wabtApi, parsed, binary, wasmModule;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0: return [4 /*yield*/, wabt_1.default()];
                 case 1:
-                    wabtInterface = _a.sent();
-                    parsed = parser_1.parse(source);
-                    returnType = "";
-                    returnExpr = "";
-                    lastExpr = parsed[parsed.length - 1];
-                    if (lastExpr.tag === "expr") {
-                        returnType = "(result i32)";
-                        returnExpr = "(local.get $$last)";
-                    }
-                    compiled = compiler.compile(source);
-                    importObject = config.importObject;
-                    wasmSource = "(module\n    (func $print (import \"imports\" \"print\") (param i32) (result i32))\n    (func $abs (import \"imports\" \"abs\") (param i32) (result i32))\n    (func $max (import \"imports\" \"max\") (param i32 i32) (result i32))\n    (func $min (import \"imports\" \"min\") (param i32 i32) (result i32))\n    (func $pow (import \"imports\" \"pow\") (param i32 i32) (result i32))\n    (func (export \"exported_func\") " + returnType + "\n      " + compiled.wasmSource + "\n      " + returnExpr + "\n    )\n  )";
-                    myModule = wabtInterface.parseWat("test.wat", wasmSource);
-                    asBinary = myModule.toBinary({});
-                    return [4 /*yield*/, WebAssembly.instantiate(asBinary.buffer, importObject)];
+                    wabtApi = _a.sent();
+                    parsed = wabtApi.parseWat("example", watSource);
+                    binary = parsed.toBinary({});
+                    return [4 /*yield*/, WebAssembly.instantiate(binary.buffer, config)];
                 case 2:
                     wasmModule = _a.sent();
-                    result = wasmModule.instance.exports.exported_func();
-                    return [2 /*return*/, result];
+                    return [2 /*return*/, wasmModule.instance.exports._start()];
             }
         });
     });

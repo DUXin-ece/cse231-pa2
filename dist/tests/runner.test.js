@@ -50,6 +50,10 @@ var importObject = {
             importObject.output += "\n";
             return arg;
         },
+        abs: Math.abs,
+        max: Math.max,
+        min: Math.min,
+        pow: Math.pow,
     },
     output: ""
 };

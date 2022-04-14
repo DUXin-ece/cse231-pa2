@@ -19,10 +19,22 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+var treeprint_1 = require("./treeprint");
+var lezer_python_1 = require("lezer-python");
 var parser_1 = require("./parser");
 var compiler = __importStar(require("./compiler"));
-var source = "sss(1,2,3)";
+var source = "x:int = 3\nwhile x>0:\n    print(x)\n    x= x-1";
+console.log(source);
+var tree = lezer_python_1.parser.parse(source);
+var cursor = tree.cursor();
+cursor.firstChild();
+do {
+    console.log(treeprint_1.stringifyTree(cursor, source, 0));
+} while (cursor.nextSibling());
 var ast = parser_1.parse(source);
-var compiled = compiler.compile(source);
 console.log(ast);
+var program = parser_1.toprogram(ast);
+console.log(program);
+var compiled = compiler.compile(source);
+// console.log(ast);
 //# sourceMappingURL=debugstart.js.map
