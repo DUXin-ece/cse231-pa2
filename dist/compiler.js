@@ -131,9 +131,10 @@ function codeGenStmt(stmt, locals) {
             stmt.body.forEach(function (s) {
                 whileBody.push(codeGenStmt(s, locals));
             });
-            var result = ["(block"].concat(condExpr).concat(["br_if 0"])
-                .concat("(loop").concat([].concat.apply([], elseStmts)).concat(condExpr).
-                concat(["br_if 1", "br 0", "))"]);
+            var result = ["(block"].concat(condExpr).concat(["i32.eqz", "br_if 0"])
+                .concat("(loop").concat([].concat.apply([], whileBody)).concat(condExpr).
+                concat(["i32.eqz", "br_if 1", "br 0", "))"]);
+            return result;
     }
 }
 exports.codeGenStmt = codeGenStmt;

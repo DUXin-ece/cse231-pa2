@@ -23,7 +23,7 @@ var treeprint_1 = require("./treeprint");
 var lezer_python_1 = require("lezer-python");
 var parser_1 = require("./parser");
 var compiler = __importStar(require("./compiler"));
-var source = "x:int = 3\nwhile x>0:\n    print(x)\n    x= x-1";
+var source = "def f(x:int)->int:\n    y:int = 4\n    while y>2:\n        y=y-1\n        print(y)\n        if y==1:\n            return 1\n    return 0\n\nprint(f(4))";
 console.log(source);
 var tree = lezer_python_1.parser.parse(source);
 var cursor = tree.cursor();

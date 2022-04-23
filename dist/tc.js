@@ -11,7 +11,7 @@ var __assign = (this && this.__assign) || function () {
     return __assign.apply(this, arguments);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.typeCheckLiteral = exports.typeCheckExpr = exports.typeCheckStmts = exports.typeCheckParams = exports.typeCheckFunDef = exports.typeCheckVarInits = exports.typeCheckProgram = void 0;
+exports.typeCheckLiteral = exports.typeCheckExpr = exports.typeCheckStmts = exports.typeCheckParams = exports.typeCheckFunDef = exports.typeCheckVarInits = exports.returnCheckFunDef = exports.typeCheckProgram = void 0;
 var ast_1 = require("./ast");
 function duplicateEnv(env) {
     return { vars: new Map(env.vars), funs: new Map(env.funs), retType: env.retType };
@@ -23,6 +23,7 @@ function typeCheckProgram(prog) {
     var env = { vars: new Map(), funs: new Map(), retType: ast_1.Type.none };
     prog.fundefs.forEach(function (fundef) {
         typedfundefs.push(typeCheckFunDef(fundef, env));
+        returnCheckFunDef(fundef, env);
     });
     typedvarinits = typeCheckVarInits(prog.varinits, env);
     typedstmts = typeCheckStmts(prog.stmts, env);
@@ -33,6 +34,39 @@ function typeCheckProgram(prog) {
     };
 }
 exports.typeCheckProgram = typeCheckProgram;
+function returnCheckFunDef(fundef, env) {
+    var stmts_num = fundef.body.length;
+    var laststmt = fundef.body[stmts_num - 1];
+    if (laststmt.tag == "return") {
+        return true;
+    }
+    else {
+        fundef.body.forEach(function (s) {
+            if (s.tag == "if") {
+                var pathreturn = [];
+                var laststmt_if = s.ifbody[s.ifbody.length - 1];
+                if (laststmt_if.tag !== "return") {
+                    throw new Error("Not all paths return");
+                }
+                for (var i = 0; i < s.elifbody.length; i++) {
+                    var lenarr = s.elifbody[i].length;
+                    if (s.elifbody[i][lenarr - 1].tag !== "return") {
+                        throw new Error("Not all paths return");
+                    }
+                }
+                var laststmt_else = s.elsebody[s.elsebody.length - 1];
+                if (!laststmt_else) {
+                    throw new Error("Not all paths return");
+                }
+                if (laststmt_else.tag !== "return") {
+                    throw new Error("Not all paths return");
+                }
+            }
+        });
+        return true;
+    }
+}
+exports.returnCheckFunDef = returnCheckFunDef;
 function typeCheckVarInits(inits, env) {
     var typedInits = [];
     inits.forEach(function (init) {
