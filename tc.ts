@@ -1,20 +1,22 @@
-import {Program, Expr, Stmt, Literal,TypedVar,Type, VarInit, FunDef} from './ast';
+import {Program, Expr, Stmt, Literal,TypedVar,Type, VarInit, FunDef, ClassDef} from './ast';
 
 type TypeEnv = {
     vars:Map<string, Type>
     funs:Map<string, [Type[], Type]>
+    classes: Map<string, Type>
     retType: Type
 }
 
 function duplicateEnv(env: TypeEnv): TypeEnv{
-    return {vars: new Map(env.vars), funs: new Map(env.funs), retType:env.retType}
+    return {vars: new Map(env.vars), funs: new Map(env.funs), classes: (env.classes), retType:env.retType}
 }
 
 export function typeCheckProgram(prog: Program<null>):Program<Type>{
     var typedvarinits: Array<VarInit<Type>> = []
     var typedfundefs: Array<FunDef<Type>> = []
     var typedstmts: Array<Stmt<Type>> = []
-    var env:TypeEnv = {vars: new Map(), funs: new Map(), retType:Type.none};
+    var typedclassdefs: Array<ClassDef<Type>> = []
+    var env:TypeEnv = {vars: new Map(), funs: new Map(), classes: new Map(), retType: "none"};
     prog.fundefs.forEach(fundef =>{
         typedfundefs.push(typeCheckFunDef(fundef, env));
         returnCheckFunDef(fundef, env);
@@ -24,6 +26,7 @@ export function typeCheckProgram(prog: Program<null>):Program<Type>{
     return {
         varinits: typedvarinits,
         fundefs: typedfundefs,
+        classdefs: typedclassdefs,
         stmts: typedstmts
     }
 }
@@ -66,7 +69,15 @@ export function typeCheckVarInits(inits: VarInit<null>[], env: TypeEnv): VarInit
     const typedInits: VarInit<Type>[] = [];
     inits.forEach( (init) => {
         const typedInit = typeCheckExpr(init.init, env);
-        if(typedInit.a !== init.type){
+        if(typeof typedInit.a =="object" && init.type=="none"){
+            //TODO
+        }
+        else if(typeof typedInit.a =="string" && typeof init.type=="string"){ // int, bool, none
+            if(typedInit.a !== init.type){
+                throw new Error("TYPE ERROR: init type does not match literal type");
+            }
+        }
+        else{
             throw new Error("TYPE ERROR: init type does not match literal type");
         }
         env.vars.set(init.name, init.type);
@@ -122,14 +133,19 @@ export function typeCheckStmts(stmts: Stmt<null>[], env: TypeEnv): Stmt<Type>[]{
                 typedStmts.push({...stmt, value: typedValue, a: typedValue.a})
                 break;
             case "assign":
-                if(!env.vars.get(stmt.name)){
-                    throw new Error("TYPE ERROR: unbound id");
+                if(typeof stmt.name == "string"){
+                    if(!env.vars.get(stmt.name)){
+                        throw new Error("TYPE ERROR: unbound id");
+                    }
+                    var typedValue = typeCheckExpr(stmt.value, env);
+                    if(typedValue.a !== env.vars.get(stmt.name)){
+                        throw new Error("TYPE ERROR: cannot assign value to id");
+                    }
+                    typedStmts.push({...stmt, value: typedValue, a: typedValue.a})
                 }
-                var typedValue = typeCheckExpr(stmt.value, env);
-                if(typedValue.a !== env.vars.get(stmt.name)){
-                    throw new Error("TYPE ERROR: cannot assign value to id");
+                else if(typeof stmt.name == "object"){
+                    //TODO
                 }
-                typedStmts.push({...stmt, value: typedValue, a: typedValue.a})
                 break;
             case "return":
                 const typedRet = typeCheckExpr(stmt.ret, env);
@@ -154,7 +170,7 @@ export function typeCheckStmts(stmts: Stmt<null>[], env: TypeEnv): Stmt<Type>[]{
                     typedelifStmts.push(typeCheckStmts(s_arr, env))
                 })
 
-                typedStmts.push({...stmt, a:Type.none,
+                typedStmts.push({...stmt, a: "none",
                 ifexpr: typedifCond,
                 ifbody: typedifStmts,
                 elifexpr: typedelifCond,
@@ -164,16 +180,16 @@ export function typeCheckStmts(stmts: Stmt<null>[], env: TypeEnv): Stmt<Type>[]{
             case "while":
                 var typedExpr: Expr<Type> = typeCheckExpr(stmt.expr,env);
                 var typedwhileStmts= typeCheckStmts(stmt.body, env);
-                typedStmts.push({...stmt, a: Type.none,
+                typedStmts.push({...stmt, a: "none",
                 expr: typedExpr,
                 body: typedwhileStmts})
                 break;
             case "pass":
-                typedStmts.push({...stmt, a: Type.none});
+                typedStmts.push({...stmt, a: "none"});
                 break;
             case "expr":
                 var typedExpr = typeCheckExpr(stmt.expr, env);
-                typedStmts.push({...stmt, a: Type.none, expr:typedExpr});
+                typedStmts.push({...stmt, a: "none", expr:typedExpr});
                 break;
         }
     })
@@ -193,39 +209,39 @@ export function typeCheckExpr(expr: Expr<null>, env: TypeEnv) : Expr<Type>{
             return {...expr, a:idType}
         case "builtin1":
             const arg = typeCheckExpr(expr.arg, env);
-            return {...expr, a:Type.int, arg:arg}
+            return {...expr, a: "int", arg:arg}
         case "builtin2":
             const arg1 = typeCheckExpr(expr.arg1, env);
             const arg2 = typeCheckExpr(expr.arg2, env);
-            if (arg1.a!== Type.int){
+            if (arg1.a!== "int"){
                 throw new Error("TYPE ERROR: arg1 must be an int");
             }
-            if (arg2.a!==Type.int){
+            if (arg2.a!== "int"){
                 throw new Error("TYPE ERROR: arg2 must be an int");
             }
-            return {...expr, arg1, arg2, a:Type.int}
+            return {...expr, arg1, arg2, a: "int"}
         case "call":
-            return {...expr, a:Type.int}
+            return {...expr, a: "int"}
         case "binexpr":
             const left = typeCheckExpr(expr.left, env);
             const right = typeCheckExpr(expr.right, env);
-            if (left.a!== Type.int){
+            if (left.a!== "int"){
                 throw new Error("TYPE ERROR: left must be an int");
             }
-            if (right.a!==Type.int){
+            if (right.a!=="int"){
                 throw new Error("TYPE ERROR: right must be an int");
             }
-            return {...expr, a:Type.int, left:left, right:right}
+            return {...expr, a: "int", left:left, right:right}
     }
 }
 
 export function typeCheckLiteral(literal: Literal<null>): Literal<Type>{
     switch(literal.tag){
         case "num":
-            return {...literal, a: Type.int};
+            return {...literal, a: "int"};
         case "bool":
-            return {...literal, a: Type.bool};    
+            return {...literal, a: "bool"};    
         case "none":
-            return {...literal, a: Type.none};
+            return {...literal, a: "none"};
     }
 }

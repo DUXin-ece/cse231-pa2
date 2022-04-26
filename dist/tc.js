@@ -12,15 +12,15 @@ var __assign = (this && this.__assign) || function () {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.typeCheckLiteral = exports.typeCheckExpr = exports.typeCheckStmts = exports.typeCheckParams = exports.typeCheckFunDef = exports.typeCheckVarInits = exports.returnCheckFunDef = exports.typeCheckProgram = void 0;
-var ast_1 = require("./ast");
 function duplicateEnv(env) {
-    return { vars: new Map(env.vars), funs: new Map(env.funs), retType: env.retType };
+    return { vars: new Map(env.vars), funs: new Map(env.funs), classes: (env.classes), retType: env.retType };
 }
 function typeCheckProgram(prog) {
     var typedvarinits = [];
     var typedfundefs = [];
     var typedstmts = [];
-    var env = { vars: new Map(), funs: new Map(), retType: ast_1.Type.none };
+    var typedclassdefs = [];
+    var env = { vars: new Map(), funs: new Map(), classes: new Map(), retType: "none" };
     prog.fundefs.forEach(function (fundef) {
         typedfundefs.push(typeCheckFunDef(fundef, env));
         returnCheckFunDef(fundef, env);
@@ -30,6 +30,7 @@ function typeCheckProgram(prog) {
     return {
         varinits: typedvarinits,
         fundefs: typedfundefs,
+        classdefs: typedclassdefs,
         stmts: typedstmts
     };
 }
@@ -71,7 +72,15 @@ function typeCheckVarInits(inits, env) {
     var typedInits = [];
     inits.forEach(function (init) {
         var typedInit = typeCheckExpr(init.init, env);
-        if (typedInit.a !== init.type) {
+        if (typeof typedInit.a == "object" && init.type == "none") {
+            //TODO
+        }
+        else if (typeof typedInit.a == "string" && typeof init.type == "string") { // int, bool, none
+            if (typedInit.a !== init.type) {
+                throw new Error("TYPE ERROR: init type does not match literal type");
+            }
+        }
+        else {
             throw new Error("TYPE ERROR: init type does not match literal type");
         }
         env.vars.set(init.name, init.type);
@@ -123,14 +132,19 @@ function typeCheckStmts(stmts, env) {
                 typedStmts.push(__assign(__assign({}, stmt), { value: typedValue, a: typedValue.a }));
                 break;
             case "assign":
-                if (!env.vars.get(stmt.name)) {
-                    throw new Error("TYPE ERROR: unbound id");
+                if (typeof stmt.name == "string") {
+                    if (!env.vars.get(stmt.name)) {
+                        throw new Error("TYPE ERROR: unbound id");
+                    }
+                    var typedValue = typeCheckExpr(stmt.value, env);
+                    if (typedValue.a !== env.vars.get(stmt.name)) {
+                        throw new Error("TYPE ERROR: cannot assign value to id");
+                    }
+                    typedStmts.push(__assign(__assign({}, stmt), { value: typedValue, a: typedValue.a }));
                 }
-                var typedValue = typeCheckExpr(stmt.value, env);
-                if (typedValue.a !== env.vars.get(stmt.name)) {
-                    throw new Error("TYPE ERROR: cannot assign value to id");
+                else if (typeof stmt.name == "object") {
+                    //TODO
                 }
-                typedStmts.push(__assign(__assign({}, stmt), { value: typedValue, a: typedValue.a }));
                 break;
             case "return":
                 var typedRet = typeCheckExpr(stmt.ret, env);
@@ -154,19 +168,19 @@ function typeCheckStmts(stmts, env) {
                 stmt.elifbody.forEach(function (s_arr) {
                     typedelifStmts.push(typeCheckStmts(s_arr, env));
                 });
-                typedStmts.push(__assign(__assign({}, stmt), { a: ast_1.Type.none, ifexpr: typedifCond, ifbody: typedifStmts, elifexpr: typedelifCond, elifbody: typedelifStmts, elsebody: typedelseStmts }));
+                typedStmts.push(__assign(__assign({}, stmt), { a: "none", ifexpr: typedifCond, ifbody: typedifStmts, elifexpr: typedelifCond, elifbody: typedelifStmts, elsebody: typedelseStmts }));
                 break;
             case "while":
                 var typedExpr = typeCheckExpr(stmt.expr, env);
                 var typedwhileStmts = typeCheckStmts(stmt.body, env);
-                typedStmts.push(__assign(__assign({}, stmt), { a: ast_1.Type.none, expr: typedExpr, body: typedwhileStmts }));
+                typedStmts.push(__assign(__assign({}, stmt), { a: "none", expr: typedExpr, body: typedwhileStmts }));
                 break;
             case "pass":
-                typedStmts.push(__assign(__assign({}, stmt), { a: ast_1.Type.none }));
+                typedStmts.push(__assign(__assign({}, stmt), { a: "none" }));
                 break;
             case "expr":
                 var typedExpr = typeCheckExpr(stmt.expr, env);
-                typedStmts.push(__assign(__assign({}, stmt), { a: ast_1.Type.none, expr: typedExpr }));
+                typedStmts.push(__assign(__assign({}, stmt), { a: "none", expr: typedExpr }));
                 break;
         }
     });
@@ -186,40 +200,40 @@ function typeCheckExpr(expr, env) {
             return __assign(__assign({}, expr), { a: idType });
         case "builtin1":
             var arg = typeCheckExpr(expr.arg, env);
-            return __assign(__assign({}, expr), { a: ast_1.Type.int, arg: arg });
+            return __assign(__assign({}, expr), { a: "int", arg: arg });
         case "builtin2":
             var arg1 = typeCheckExpr(expr.arg1, env);
             var arg2 = typeCheckExpr(expr.arg2, env);
-            if (arg1.a !== ast_1.Type.int) {
+            if (arg1.a !== "int") {
                 throw new Error("TYPE ERROR: arg1 must be an int");
             }
-            if (arg2.a !== ast_1.Type.int) {
+            if (arg2.a !== "int") {
                 throw new Error("TYPE ERROR: arg2 must be an int");
             }
-            return __assign(__assign({}, expr), { arg1: arg1, arg2: arg2, a: ast_1.Type.int });
+            return __assign(__assign({}, expr), { arg1: arg1, arg2: arg2, a: "int" });
         case "call":
-            return __assign(__assign({}, expr), { a: ast_1.Type.int });
+            return __assign(__assign({}, expr), { a: "int" });
         case "binexpr":
             var left = typeCheckExpr(expr.left, env);
             var right = typeCheckExpr(expr.right, env);
-            if (left.a !== ast_1.Type.int) {
+            if (left.a !== "int") {
                 throw new Error("TYPE ERROR: left must be an int");
             }
-            if (right.a !== ast_1.Type.int) {
+            if (right.a !== "int") {
                 throw new Error("TYPE ERROR: right must be an int");
             }
-            return __assign(__assign({}, expr), { a: ast_1.Type.int, left: left, right: right });
+            return __assign(__assign({}, expr), { a: "int", left: left, right: right });
     }
 }
 exports.typeCheckExpr = typeCheckExpr;
 function typeCheckLiteral(literal) {
     switch (literal.tag) {
         case "num":
-            return __assign(__assign({}, literal), { a: ast_1.Type.int });
+            return __assign(__assign({}, literal), { a: "int" });
         case "bool":
-            return __assign(__assign({}, literal), { a: ast_1.Type.bool });
+            return __assign(__assign({}, literal), { a: "bool" });
         case "none":
-            return __assign(__assign({}, literal), { a: ast_1.Type.none });
+            return __assign(__assign({}, literal), { a: "none" });
     }
 }
 exports.typeCheckLiteral = typeCheckLiteral;

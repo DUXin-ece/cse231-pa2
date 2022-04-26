@@ -23,9 +23,10 @@ if(typeof process !== "undefined") {
 
 export async function run(watSource : string, config: any) : Promise<number> {
   const wabtApi = await wabt();
-
   const parsed = wabtApi.parseWat("example", watSource);
   const binary = parsed.toBinary({});
+  var memory = new WebAssembly.Memory({initial:10, maximum:100});
+  config.mem = {heap: memory}
   const wasmModule = await WebAssembly.instantiate(binary.buffer, config);
   return (wasmModule.instance.exports as any)._start();
 }

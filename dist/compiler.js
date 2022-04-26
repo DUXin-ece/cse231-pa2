@@ -78,14 +78,19 @@ function codeGenStmt(stmt, locals) {
             valStmts.push("return");
             return valStmts;
         case "assign":
-            var valStmts = codeGenExpr(stmt.value, locals);
-            if (locals.has(stmt.name)) {
-                valStmts.push("(local.set $" + stmt.name + ")");
+            if (typeof stmt.name == "string") {
+                var valStmts = codeGenExpr(stmt.value, locals);
+                if (locals.has(stmt.name)) {
+                    valStmts.push("(local.set $" + stmt.name + ")");
+                }
+                else {
+                    valStmts.push("(global.set $" + stmt.name + ")");
+                }
+                return valStmts;
             }
             else {
-                valStmts.push("(global.set $" + stmt.name + ")");
+                throw new Error("TODO");
             }
-            return valStmts;
         case "expr":
             var result = codeGenExpr(stmt.expr, locals);
             result.push("(local.set $scratch)");
@@ -145,13 +150,13 @@ function codeGenExpr(expr, locals) {
             var toCall;
             if (expr.name == "print") {
                 switch (expr.arg.a) {
-                    case (ast_1.Type.bool):
+                    case ("bool"):
                         toCall = "print_bool";
                         break;
-                    case (ast_1.Type.int):
+                    case ("int"):
                         toCall = "print_num";
                         break;
-                    case (ast_1.Type.none):
+                    case ("none"):
                         toCall = "print_none";
                         break;
                 }

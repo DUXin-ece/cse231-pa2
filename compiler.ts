@@ -85,10 +85,15 @@ export function codeGenStmt(stmt : Stmt<Type>, locals:LocalEnv) : Array<string> 
       valStmts.push(`return`);
       return valStmts;
     case "assign":
-      var valStmts = codeGenExpr(stmt.value, locals);
-      if(locals.has(stmt.name)) { valStmts.push(`(local.set $${stmt.name})`); }
-      else { valStmts.push(`(global.set $${stmt.name})`); }
-      return valStmts;
+      if(typeof stmt.name== "string"){
+        var valStmts = codeGenExpr(stmt.value, locals);
+        if(locals.has(stmt.name)) { valStmts.push(`(local.set $${stmt.name})`); }
+        else { valStmts.push(`(global.set $${stmt.name})`); }
+        return valStmts;
+      }
+      else {
+        throw new Error("TODO");
+      }
     case "expr":
       var result = codeGenExpr(stmt.expr, locals);
       result.push(`(local.set $scratch)`);
@@ -145,9 +150,9 @@ function codeGenExpr(expr : Expr<Type>, locals: LocalEnv) : Array<string> {
       var toCall;
       if(expr.name=="print"){
         switch(expr.arg.a){
-          case(Type.bool): toCall = "print_bool"; break;
-          case(Type.int): toCall = "print_num"; break;
-          case(Type.none): toCall = "print_none"; break;
+          case("bool"): toCall = "print_bool"; break;
+          case("int"): toCall = "print_num"; break;
+          case("none"): toCall = "print_none"; break;
         }
       }
       else{

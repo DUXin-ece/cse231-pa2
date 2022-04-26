@@ -1,19 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.toprogram = exports.parse = exports.traverse = exports.traverseStmt = exports.traverseExpr = exports.traverseArgs = exports.traverseType = exports.traverseParameters = exports.getType = void 0;
+exports.toprogram = exports.parse = exports.traverse = exports.traverseStmt = exports.traverseExpr = exports.traverseArgs = exports.traverseType = exports.traverseParameters = void 0;
 var lezer_python_1 = require("lezer-python");
 var ast_1 = require("./ast");
-function getType(a) {
-    switch (a) {
-        case "int":
-            return ast_1.Type.int;
-        case "bool":
-            return ast_1.Type.bool;
-        default:
-            throw new Error("PARSE ERROR: not a valid type");
-    }
-}
-exports.getType = getType;
 function traverseParameters(s, t) {
     t.firstChild(); // Focuses on open paren
     var parameters = [];
@@ -45,7 +34,7 @@ function traverseType(s, t) {
             if (name_2 !== "int") {
                 throw new Error("Unknown type: " + name_2);
             }
-            return getType(name_2);
+            return name_2;
         default:
             throw new Error("Unknown type: " + t.type.name);
     }
@@ -55,7 +44,6 @@ function traverseArgs(c, s) {
     var args = [];
     c.firstChild(); // go into arglist
     while (c.nextSibling() && c.type.name !== ")") {
-        console.log(s.substring(c.from, c.to));
         args.push(traverseExpr(c, s));
         c.nextSibling();
         //console.log(s.substring(c.from, c.to));
@@ -210,33 +198,46 @@ function traverseStmt(c, s) {
             };
         case "AssignStatement":
             c.firstChild(); // go to name
-            var name_3 = s.substring(c.from, c.to);
+            var lvalue;
+            if (c.type.name == "MemberExpression") {
+                // TODO
+            }
+            else if (c.type.name == "VariableName") {
+                lvalue = s.substring(c.from, c.to);
+                c.nextSibling();
+                if (c.type.name == "TypeDef") {
+                    c.firstChild(); //:
+                    c.nextSibling(); //VariableName, actually typename here
+                    var type = s.substring(c.from, c.to);
+                    c.parent();
+                    c.nextSibling();
+                    c.nextSibling();
+                    var value = traverseExpr(c, s);
+                    c.parent();
+                    if (type !== "int" && type !== "bool" && type !== "none") {
+                        throw new Error("PARSE ERROR: not a valid type");
+                    }
+                    return {
+                        tag: "varinit",
+                        var: { name: lvalue, type: type },
+                        value: value
+                    };
+                }
+                else if (c.type.name == "AssignOp") { // Assignment
+                    c.nextSibling();
+                    var value = traverseExpr(c, s);
+                    c.parent();
+                    return {
+                        tag: "assign",
+                        name: lvalue,
+                        value: value
+                    };
+                }
+                else { //Actual don't know what else situation can be here
+                    throw new Error("PARSE ERROR: could not parse stmt at " + c.node.from + " " + c.node.to + ": " + s.substring(c.from, c.to));
+                }
+            }
             c.nextSibling();
-            if (c.type.name == "TypeDef") {
-                var type = getType(s.substring(c.from + 1, c.to));
-                c.nextSibling();
-                c.nextSibling();
-                var value = traverseExpr(c, s);
-                c.parent();
-                return {
-                    tag: "varinit",
-                    var: { name: name_3, type: type },
-                    value: value
-                };
-            }
-            else if (c.type.name == "AssignOp") { // Assignment
-                c.nextSibling();
-                var value = traverseExpr(c, s);
-                c.parent();
-                return {
-                    tag: "assign",
-                    name: name_3,
-                    value: value
-                };
-            }
-            else { //Actual don't know what else situation can be here
-                throw new Error("PARSE ERROR: could not parse stmt at " + c.node.from + " " + c.node.to + ": " + s.substring(c.from, c.to));
-            }
         case "ExpressionStatement":
             c.firstChild();
             var expr = traverseExpr(c, s);
@@ -317,7 +318,7 @@ function traverseStmt(c, s) {
             c.nextSibling(); // Focus on ParamList
             var parameters = traverseParameters(s, c);
             c.nextSibling(); // Focus on Body or TypeDef
-            var funcret = ast_1.Type.none;
+            var funcret = "none";
             var maybeTD = c;
             if (maybeTD.type.name === "TypeDef") {
                 c.firstChild();
@@ -338,6 +339,51 @@ function traverseStmt(c, s) {
                 params: parameters,
                 ret: funcret,
                 body: body
+            };
+        case "ClassDefinition":
+            c.firstChild(); // Focus on class keyword
+            c.nextSibling(); // Focus on class name
+            var classname = s.substring(c.from, c.to);
+            c.nextSibling(); // ArgList
+            c.firstChild(); // (
+            c.nextSibling(); // should be object
+            var superclass = s.substring(c.from, c.to);
+            c.parent();
+            if (superclass !== "object") {
+                throw new Error("PARSE ERROR: undefined superclass");
+            }
+            c.nextSibling(); // Body
+            c.firstChild(); // :
+            var methods = [];
+            var fields = [];
+            while (c.nextSibling()) {
+                if (c.type.name == "AssignStatement") {
+                    var vardecl = traverseStmt(c, s);
+                    var varinit = {
+                        name: vardecl.var.name,
+                        type: vardecl.var.type,
+                        init: vardecl.value
+                    };
+                    fields.push(varinit);
+                }
+                else if (c.type.name == "FunctionDefinition") {
+                    var methodstmt = traverseStmt(c, s);
+                    var method = {
+                        name: methodstmt.name,
+                        params: methodstmt.params,
+                        ret: methodstmt.ret,
+                        body: methodstmt.body
+                    };
+                    methods.push(method);
+                }
+            }
+            c.parent();
+            c.parent();
+            return {
+                tag: "class",
+                name: classname,
+                methods: methods,
+                fields: fields
             };
         default:
             throw new Error("PARSE ERROR: could not parse stmt at " + c.node.from + " " + c.node.to + ": " + s.substring(c.from, c.to));
@@ -367,7 +413,8 @@ exports.parse = parse;
 function toprogram(stmts) {
     var varinits = [];
     var fundefs = [];
-    var funcstmts = [];
+    var mainstmts = [];
+    var classdefs = [];
     var init_state = true;
     stmts.forEach(function (stmt) {
         if (init_state == true && stmt.tag == "varinit") {
@@ -378,31 +425,45 @@ function toprogram(stmts) {
             };
             varinits.push(newvar);
         }
-        else if (init_state == true && stmt.tag == "funcdef") {
-            var newfunc = {
-                name: stmt.name,
-                params: stmt.params,
-                ret: stmt.ret,
-                body: stmt.body
-            };
-            fundefs.push(newfunc);
+        else if (init_state == true) {
+            if (stmt.tag == "funcdef") {
+                var newfunc = {
+                    name: stmt.name,
+                    params: stmt.params,
+                    ret: stmt.ret,
+                    body: stmt.body
+                };
+                fundefs.push(newfunc);
+            }
+            else if (stmt.tag == "class") {
+                var classdef = {
+                    name: stmt.name,
+                    methods: stmt.methods,
+                    fields: stmt.fields
+                };
+                classdefs.push(classdef);
+            }
         }
         else {
             init_state = false;
-            console.log(stmt);
-            if (stmt.tag == "varinit" || stmt.tag == "funcdef") {
+            if (stmt.tag == "varinit" || stmt.tag == "funcdef" || stmt.tag == "class") {
                 throw new Error("PARSE ERROR: Initialization in a wrong place");
             }
             else {
-                funcstmts.push(stmt);
+                mainstmts.push(stmt);
             }
         }
     });
-    console.log(varinits);
+    console.log("PARSER DEBUG INFORMATION:");
+    console.log("Varinits:", varinits);
+    console.log("FunDefs:", fundefs);
+    console.log("ClassDefs:", classdefs);
+    console.log("Stmts:", mainstmts);
     return {
         varinits: varinits,
         fundefs: fundefs,
-        stmts: funcstmts
+        classdefs: classdefs,
+        stmts: mainstmts
     };
 }
 exports.toprogram = toprogram;

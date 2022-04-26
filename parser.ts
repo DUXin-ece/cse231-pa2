@@ -1,18 +1,8 @@
 import {parser} from "lezer-python";
 import {TreeCursor} from "lezer-tree";
 import { visitFunctionBody } from "typescript";
-import {Program, BinOp, Expr, Stmt, Type, TypedVar, VarInit, FunDef} from "./ast";
+import {Program, BinOp, Expr, Stmt, Type, TypedVar, VarInit, FunDef, ClassDef} from "./ast";
 
-export function getType(a: string): Type{
-  switch(a){
-    case "int":
-      return Type.int;
-    case "bool":
-      return Type.bool;
-    default:
-      throw new Error("PARSE ERROR: not a valid type");
-  }
-}
 export function traverseParameters(s : string, t : TreeCursor) : Array<TypedVar<null>> {
   t.firstChild();  // Focuses on open paren
   const parameters = []
@@ -42,7 +32,7 @@ export function traverseType(s : string, t : TreeCursor) : Type {
       if(name !== "int") {
         throw new Error("Unknown type: " + name)
       }
-      return getType(name);
+      return name;
     default:
       throw new Error("Unknown type: " + t.type.name)
 
@@ -53,7 +43,6 @@ export function traverseArgs(c: TreeCursor, s: string): Array<Expr<null>>{  // s
   var args: Array<Expr<null>> = [];
   c.firstChild(); // go into arglist
   while(c.nextSibling()&& c.type.name!==")"){
-    console.log(s.substring(c.from, c.to));
     args.push(traverseExpr(c,s));
     c.nextSibling(); 
     //console.log(s.substring(c.from, c.to));
@@ -89,6 +78,17 @@ export function traverseExpr(c : TreeCursor, s : string) : Expr<null> {
       return {
         tag: "id",
         name: s.substring(c.from, c.to)
+      }
+    case "MemberExpression":
+      c.firstChild();
+      var obj = traverseExpr(c,s);
+      c.nextSibling(); // .
+      c.nextSibling();
+      var field = s.substring(c.from, c.to);
+      return {
+        tag: "lookup",
+        obj: obj,
+        field: field
       }
     case "CallExpression":
       c.firstChild();
@@ -185,8 +185,9 @@ export function traverseExpr(c : TreeCursor, s : string) : Expr<null> {
         const right = traverseExpr(c,s);
         c.parent(); //pop BinaryExpression
         return {tag: "binexpr", op:op, left:left, right:right}
-    default:
-      throw new Error("PARSE ERROR: could not parse expr at " + c.from + " " + c.to + ": " + s.substring(c.from, c.to));
+      
+      default:
+        throw new Error("PARSE ERROR: could not parse expr at " + c.from + " " + c.to + ": " + s.substring(c.from, c.to));
   }
 }
 
@@ -207,32 +208,51 @@ export function traverseStmt(c : TreeCursor, s : string) : Stmt<null> {
       }
     case "AssignStatement":
       c.firstChild(); // go to name
-      const name = s.substring(c.from, c.to);
-      c.nextSibling();
-      if(c.type.name=="TypeDef"){
-        const type = getType(s.substring(c.from+1, c.to));
-        c.nextSibling();
-        c.nextSibling();
-        const value = traverseExpr(c, s);
-        c.parent();
-        return {
-          tag: "varinit",
-          var: {name: name, type: type},
-          value: value
-        }
-      }
-      else if(c.type.name=="AssignOp"){  // Assignment
-        c.nextSibling();
+      var lvalue = traverseExpr(c, s);
+      if(lvalue.tag == "lookup"){ // This cannot happen in the initialization
+        c.nextSibling(); // = 
+        c.nextSibling(); // value
         const value = traverseExpr(c, s);
         c.parent();
         return {
           tag: "assign",
-          name: name,
+          name: lvalue,
           value: value
         }
       }
-      else{ //Actual don't know what else situation can be here
-        throw new Error("PARSE ERROR: could not parse stmt at " + c.node.from + " " + c.node.to + ": " + s.substring(c.from, c.to));
+      else if(lvalue.tag == "id"){
+        c.nextSibling();
+        if(c.type.name as any=="TypeDef"){
+          c.firstChild(); //:
+          c.nextSibling(); //VariableName, actually typename here
+          const type = s.substring(c.from, c.to);
+          c.parent();
+          c.nextSibling();
+          c.nextSibling();
+          const value = traverseExpr(c, s);
+          c.parent();
+          if(type!=="int" && type!=="bool" && type!=="none"){
+            throw new Error("PARSE ERROR: not a valid type")
+          }
+          return {
+            tag: "varinit",
+            var: {name: lvalue.name, type: type},
+            value: value
+          }
+        }
+        else if(c.type.name as any=="AssignOp"){  // Assignment
+          c.nextSibling();
+          const value = traverseExpr(c, s);
+          c.parent();
+          return {
+            tag: "assign",
+            name: lvalue,
+            value: value
+          }
+        }
+        else{ //Actual don't know what else situation can be here
+          throw new Error("PARSE ERROR: could not parse stmt at " + c.node.from + " " + c.node.to + ": " + s.substring(c.from, c.to));
+        }
       }
     case "ExpressionStatement":
       c.firstChild();
@@ -314,7 +334,7 @@ export function traverseStmt(c : TreeCursor, s : string) : Stmt<null> {
         c.nextSibling(); // Focus on ParamList
         var parameters = traverseParameters(s, c)
         c.nextSibling(); // Focus on Body or TypeDef
-        let funcret : Type = Type.none;
+        let funcret : Type = "none";
         let maybeTD = c;
         if(maybeTD.type.name === "TypeDef") {
           c.firstChild();
@@ -323,7 +343,7 @@ export function traverseStmt(c : TreeCursor, s : string) : Stmt<null> {
         }
         c.nextSibling(); // Focus on single statement (for now)
         c.firstChild();  // Focus on :
-        const body = [];
+        var body = [];
         while(c.nextSibling()) {
           body.push(traverseStmt(c, s));
         }
@@ -336,6 +356,51 @@ export function traverseStmt(c : TreeCursor, s : string) : Stmt<null> {
           ret: funcret,
           body: body
         }
+    case "ClassDefinition":
+      c.firstChild(); // Focus on class keyword
+      c.nextSibling(); // Focus on class name
+      var classname = s.substring(c.from, c.to);
+      c.nextSibling(); // ArgList
+      c.firstChild();  // (
+      c.nextSibling(); // should be object
+      var superclass = s.substring(c.from, c.to);
+      c.parent();
+      if(superclass !== "object"){
+        throw new Error("PARSE ERROR: undefined superclass");
+      }
+      c.nextSibling(); // Body
+      c.firstChild();  // :
+      var methods:Array<FunDef<null>> = [];
+      var fields:Array<VarInit<null>> = [];
+      while(c.nextSibling()) {
+        if(c.type.name =="AssignStatement"){
+          var vardecl:any = traverseStmt(c,s);
+          var varinit = {
+            name: vardecl.var.name,
+            type: vardecl.var.type,
+            init: vardecl.value
+          }
+          fields.push(varinit);
+        }
+        else if(c.type.name == "FunctionDefinition"){
+          var methodstmt:any = traverseStmt(c,s);
+          var method = {
+            name: methodstmt.name,
+            params: methodstmt.params,
+            ret: methodstmt.ret,
+            body: methodstmt.body
+          }
+          methods.push(method);
+        }
+      }
+      c.parent();
+      c.parent();
+      return {
+        tag: "class",
+        name: classname, 
+        methods: methods, 
+        fields: fields
+      }
     default:
       throw new Error("PARSE ERROR: could not parse stmt at " + c.node.from + " " + c.node.to + ": " + s.substring(c.from, c.to));
   }
@@ -363,7 +428,8 @@ export function parse(source : string) : Stmt<null>[] {
 export function toprogram(stmts: Stmt<null>[]) : Program<null> {
   var varinits: VarInit<null>[]=[];
   var fundefs:FunDef<null>[]=[];
-  var funcstmts: Stmt<null>[]=[];
+  var mainstmts: Stmt<null>[]=[];
+  var classdefs: ClassDef<null>[] = [];
   var init_state:boolean = true
   stmts.forEach(stmt =>{
     if(init_state==true && stmt.tag=="varinit"){
@@ -372,34 +438,47 @@ export function toprogram(stmts: Stmt<null>[]) : Program<null> {
         type: stmt.var.type,
         init: stmt.value
       }
-
       varinits.push(newvar); 
     }
-    else if(init_state==true &&stmt.tag=="funcdef"){
-      var newfunc = {
-        name: stmt.name,
-        params: stmt.params,
-        ret: stmt.ret,
-        body: stmt.body
+    else if(init_state==true){
+      if(stmt.tag=="funcdef"){
+        var newfunc = {
+          name: stmt.name,
+          params: stmt.params,
+          ret: stmt.ret,
+          body: stmt.body
+        }
+        fundefs.push(newfunc); 
       }
-
-      fundefs.push(newfunc); 
+      else if(stmt.tag=="class"){
+        var classdef = {
+          name: stmt.name,
+          methods: stmt.methods,
+          fields: stmt.fields
+        }
+        classdefs.push(classdef)
+      }
     }
     else{
       init_state = false;
-      console.log(stmt)
-      if(stmt.tag=="varinit"|| stmt.tag=="funcdef"){
+      if(stmt.tag=="varinit"|| stmt.tag=="funcdef"|| stmt.tag=="class"){
         throw new Error("PARSE ERROR: Initialization in a wrong place");
       }
       else{
-        funcstmts.push(stmt);
+        mainstmts.push(stmt);
       }
     }
   })
-  console.log(varinits)
+
+  console.log("PARSER DEBUG INFORMATION:");
+  console.log("Varinits:" ,varinits);
+  console.log("FunDefs:" ,fundefs);
+  console.log("ClassDefs:" ,classdefs);
+  console.log("Stmts:" ,mainstmts);
   return {
     varinits: varinits,
     fundefs: fundefs,
-    stmts: funcstmts
+    classdefs: classdefs,
+    stmts: mainstmts
   }
 }

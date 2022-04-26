@@ -68,7 +68,7 @@ if (typeof process !== "undefined") {
 }
 function run(watSource, config) {
     return __awaiter(this, void 0, void 0, function () {
-        var wabtApi, parsed, binary, wasmModule;
+        var wabtApi, parsed, binary, memory, wasmModule;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0: return [4 /*yield*/, wabt_1.default()];
@@ -76,6 +76,8 @@ function run(watSource, config) {
                     wabtApi = _a.sent();
                     parsed = wabtApi.parseWat("example", watSource);
                     binary = parsed.toBinary({});
+                    memory = new WebAssembly.Memory({ initial: 10, maximum: 100 });
+                    config.mem = { heap: memory };
                     return [4 /*yield*/, WebAssembly.instantiate(binary.buffer, config)];
                 case 2:
                     wasmModule = _a.sent();
