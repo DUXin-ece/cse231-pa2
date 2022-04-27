@@ -54,12 +54,13 @@ document.addEventListener("DOMContentLoaded", async () => {
         (func $max (import "imports" "max") (param i32 i32) (result i32))
         (func $min (import "imports" "min") (param i32 i32) (result i32))
         (func $pow (import "imports" "pow") (param i32 i32) (result i32))
-        ${compiled.funcdef}
-        ${compiled.varinits}
+${compiled.funcdef}
+${compiled.varinits}
+${compiled.methoddef}
         (func (export "_start") ${returnType}
           (local $scratch i32 )
-          ${compiled.wasmSource}
-          ${returnExpr}
+${compiled.wasmSource}
+${returnExpr}
         )
       )`;
       const code = document.getElementById("generated-code");

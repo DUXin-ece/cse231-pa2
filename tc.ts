@@ -1,9 +1,10 @@
 import {Program, Expr, Stmt, Literal,TypedVar,Type, VarInit, FunDef, ClassDef} from './ast';
+import { NONE } from './tests/helpers.test';
 
 type TypeEnv = {
     vars:Map<string, Type>
     funs:Map<string, [Type[], Type]>
-    classes: Map<string, Type>
+    classes: Map<string, Map<string, Type>>
     retType: Type
 }
 
@@ -20,6 +21,9 @@ export function typeCheckProgram(prog: Program<null>):Program<Type>{
     prog.fundefs.forEach(fundef =>{
         typedfundefs.push(typeCheckFunDef(fundef, env));
         returnCheckFunDef(fundef, env);
+    })
+    prog.classdefs.forEach(cls=>{
+        typedclassdefs.push(typeCheckClassDef(cls, env));
     })
     typedvarinits = typeCheckVarInits(prog.varinits, env);
     typedstmts = typeCheckStmts(prog.stmts, env);
@@ -69,8 +73,8 @@ export function typeCheckVarInits(inits: VarInit<null>[], env: TypeEnv): VarInit
     const typedInits: VarInit<Type>[] = [];
     inits.forEach( (init) => {
         const typedInit = typeCheckExpr(init.init, env);
-        if(typeof typedInit.a =="object" && init.type=="none"){
-            //TODO
+        if( typedInit.a =="none" && typeof init.type=="object"){
+            
         }
         else if(typeof typedInit.a =="string" && typeof init.type=="string"){ // int, bool, none
             if(typedInit.a !== init.type){
@@ -86,8 +90,32 @@ export function typeCheckVarInits(inits: VarInit<null>[], env: TypeEnv): VarInit
     return typedInits;
 }
 
+export function typeCheckClassDef(aclass: ClassDef<null>, env: TypeEnv): ClassDef<Type>{
+    var classenv: Map<string, Type> = new Map();
+    env.funs.set(aclass.name, [undefined, {tag:"object", class: aclass.name}]);
+    const localEnv = duplicateEnv(env);
+    var typedclass: ClassDef<Type>;
+    var typedfields: VarInit<Type>[];
+    var typedmethods: FunDef<Type>[];
+    aclass.fields.forEach(v => {
+        localEnv.vars.set(v.name, v.type);
+        classenv.set(v.name, v.type);
+    });
+    typedfields = typeCheckVarInits(aclass.fields, localEnv);
+    aclass.methods.forEach(m =>{
+        var methodname = m.name + aclass.name;
+        localEnv.funs.set(methodname, [m.params.map(param => param.type), m.ret]);
+        classenv.set(methodname, m.ret);
+        typedmethods.push(typeCheckFunDef(m, localEnv));
+    });
+    typedclass = {...aclass, a:{tag:"object", class: aclass.name}, fields: typedfields, methods: typedmethods}
+    env.classes.set(aclass.name, classenv);
+    return typedclass;
+}
+
 export function typeCheckFunDef(fun: FunDef<null>, env: TypeEnv):FunDef<Type>{
     // add params to env
+    
     const localEnv = duplicateEnv(env);
     fun.params.forEach(param =>{
         localEnv.vars.set(param.name, param.type);
@@ -101,6 +129,7 @@ export function typeCheckFunDef(fun: FunDef<null>, env: TypeEnv):FunDef<Type>{
     // })
 
     // add fun type to env
+    env.funs.set(fun.name, [fun.params.map(param => param.type), fun.ret])
     localEnv.funs.set(fun.name, [fun.params.map(param => param.type), fun.ret])
     
     // add ret type
@@ -127,24 +156,43 @@ export function typeCheckStmts(stmts: Stmt<null>[], env: TypeEnv): Stmt<Type>[]{
                 var typedValue = typeCheckExpr(stmt.value, env);
                 env.vars.set(stmt.var.name, stmt.var.type);
                 console.log(env)
-                if(typedValue.a!=env.vars.get(stmt.var.name)){
-                    throw new Error("TYPE ERROR: cannot assign value to id");
+                var lvalueType = env.vars.get(stmt.var.name);
+                if(typeof lvalueType == "object"){
+                    if(typedValue.a!= "none"){
+                        throw new Error("TYPE ERROR: class must be initialized as none type");
+                    }
                 }
+                else if(typeof lvalueType == "string"){
+                    if(typedValue.a!=env.vars.get(stmt.var.name)){
+                        throw new Error("TYPE ERROR: cannot assign value to id");
+                    }
+                } 
                 typedStmts.push({...stmt, value: typedValue, a: typedValue.a})
                 break;
             case "assign":
-                if(typeof stmt.name == "string"){
-                    if(!env.vars.get(stmt.name)){
+                if(stmt.name.tag == "id"){
+                    var varname = env.vars.get(stmt.name.name)
+                    if(!varname){
                         throw new Error("TYPE ERROR: unbound id");
                     }
                     var typedValue = typeCheckExpr(stmt.value, env);
-                    if(typedValue.a !== env.vars.get(stmt.name)){
+                    if(typeof typedValue.a=="object" && typeof varname=="object"){
+                        if(typedValue.a.class !== varname.class){
+                            throw new Error("TYPE ERROR: cannot assign value to id");
+                        }
+                    }
+                    else if(typedValue.a !== env.vars.get(stmt.name.name)){
                         throw new Error("TYPE ERROR: cannot assign value to id");
                     }
                     typedStmts.push({...stmt, value: typedValue, a: typedValue.a})
                 }
-                else if(typeof stmt.name == "object"){
-                    //TODO
+                else if(stmt.name.tag=="lookup"){
+                    var typedValue = typeCheckExpr(stmt.value, env);
+                    var typedLValue = typeCheckExpr(stmt.name, env);
+                    if(typedLValue.a != typedValue.a){
+                        throw new Error("TYPE ERROR: cannot assign value to lookup");
+                    }
+                    typedStmts.push({...stmt, value: typedValue, name: typedLValue as any, a: typedValue.a});
                 }
                 break;
             case "return":
@@ -221,7 +269,8 @@ export function typeCheckExpr(expr: Expr<null>, env: TypeEnv) : Expr<Type>{
             }
             return {...expr, arg1, arg2, a: "int"}
         case "call":
-            return {...expr, a: "int"}
+            var func = env.funs.get(expr.name);
+            return {...expr, a: func[1]}  // 1 is return type
         case "binexpr":
             const left = typeCheckExpr(expr.left, env);
             const right = typeCheckExpr(expr.right, env);
@@ -232,6 +281,19 @@ export function typeCheckExpr(expr: Expr<null>, env: TypeEnv) : Expr<Type>{
                 throw new Error("TYPE ERROR: right must be an int");
             }
             return {...expr, a: "int", left:left, right:right}
+        case "lookup":
+            const obj = typeCheckExpr(expr.obj, env);
+            if(typeof obj.a == "object"){
+                if(obj.a.tag!="object"){
+                    throw new Error("TYPE ERROR: not an object");
+                }
+            }
+            else{
+                throw new Error("TYPE ERROR: not an object");
+            }
+            const classinfo = env.classes.get(obj.a.class);
+            const fieldtype = classinfo.get(expr.field);
+            return {...expr, a:fieldtype, obj:obj}
     }
 }
 

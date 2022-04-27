@@ -1,5 +1,5 @@
-import {parser} from "lezer-python";
-import {TreeCursor} from "lezer-tree";
+import {parser} from "@lezer/python";
+import {TreeCursor} from "@lezer/common";
 import { visitFunctionBody } from "typescript";
 import {Program, BinOp, Expr, Stmt, Type, TypedVar, VarInit, FunDef, ClassDef} from "./ast";
 
@@ -53,6 +53,11 @@ export function traverseArgs(c: TreeCursor, s: string): Array<Expr<null>>{  // s
 
 export function traverseExpr(c : TreeCursor, s : string) : Expr<null> {
   switch(c.type.name) {
+    case "None":
+      return {
+        tag: "literal",
+        literal: {tag:"none", value: 0}
+      }
     case "Boolean":
       if(s.substring(c.from, c.to)=="True"){
         return{
@@ -85,6 +90,7 @@ export function traverseExpr(c : TreeCursor, s : string) : Expr<null> {
       c.nextSibling(); // .
       c.nextSibling();
       var field = s.substring(c.from, c.to);
+      c.parent();
       return {
         tag: "lookup",
         obj: obj,
@@ -225,19 +231,25 @@ export function traverseStmt(c : TreeCursor, s : string) : Stmt<null> {
         if(c.type.name as any=="TypeDef"){
           c.firstChild(); //:
           c.nextSibling(); //VariableName, actually typename here
-          const type = s.substring(c.from, c.to);
+          var type = s.substring(c.from, c.to);
           c.parent();
           c.nextSibling();
           c.nextSibling();
           const value = traverseExpr(c, s);
           c.parent();
           if(type!=="int" && type!=="bool" && type!=="none"){
-            throw new Error("PARSE ERROR: not a valid type")
+            return {
+              tag: "varinit",
+              var: {name: lvalue.name, type: {tag:"object", class: type}},
+              value: value
+            }
           }
-          return {
-            tag: "varinit",
-            var: {name: lvalue.name, type: type},
-            value: value
+          else{
+            return {
+              tag: "varinit",
+              var: {name: lvalue.name, type: type},
+              value: value
+            }
           }
         }
         else if(c.type.name as any=="AssignOp"){  // Assignment
@@ -440,8 +452,7 @@ export function toprogram(stmts: Stmt<null>[]) : Program<null> {
       }
       varinits.push(newvar); 
     }
-    else if(init_state==true){
-      if(stmt.tag=="funcdef"){
+    else if(init_state==true && stmt.tag=="funcdef"){
         var newfunc = {
           name: stmt.name,
           params: stmt.params,
@@ -450,15 +461,14 @@ export function toprogram(stmts: Stmt<null>[]) : Program<null> {
         }
         fundefs.push(newfunc); 
       }
-      else if(stmt.tag=="class"){
-        var classdef = {
-          name: stmt.name,
-          methods: stmt.methods,
-          fields: stmt.fields
-        }
-        classdefs.push(classdef)
+    else if(init_state==true && stmt.tag=="class"){
+      var classdef = {
+        name: stmt.name,
+        methods: stmt.methods,
+        fields: stmt.fields
       }
-    }
+      classdefs.push(classdef)
+    } 
     else{
       init_state = false;
       if(stmt.tag=="varinit"|| stmt.tag=="funcdef"|| stmt.tag=="class"){

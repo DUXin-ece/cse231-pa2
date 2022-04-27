@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.toprogram = exports.parse = exports.traverse = exports.traverseStmt = exports.traverseExpr = exports.traverseArgs = exports.traverseType = exports.traverseParameters = void 0;
-var lezer_python_1 = require("lezer-python");
+var python_1 = require("@lezer/python");
 var ast_1 = require("./ast");
 function traverseParameters(s, t) {
     t.firstChild(); // Focuses on open paren
@@ -54,6 +54,11 @@ function traverseArgs(c, s) {
 exports.traverseArgs = traverseArgs;
 function traverseExpr(c, s) {
     switch (c.type.name) {
+        case "None":
+            return {
+                tag: "literal",
+                literal: { tag: "none", value: 0 }
+            };
         case "Boolean":
             if (s.substring(c.from, c.to) == "True") {
                 return {
@@ -79,6 +84,18 @@ function traverseExpr(c, s) {
             return {
                 tag: "id",
                 name: s.substring(c.from, c.to)
+            };
+        case "MemberExpression":
+            c.firstChild();
+            var obj = traverseExpr(c, s);
+            c.nextSibling(); // .
+            c.nextSibling();
+            var field = s.substring(c.from, c.to);
+            c.parent();
+            return {
+                tag: "lookup",
+                obj: obj,
+                field: field
             };
         case "CallExpression":
             c.firstChild();
@@ -198,12 +215,19 @@ function traverseStmt(c, s) {
             };
         case "AssignStatement":
             c.firstChild(); // go to name
-            var lvalue;
-            if (c.type.name == "MemberExpression") {
-                // TODO
+            var lvalue = traverseExpr(c, s);
+            if (lvalue.tag == "lookup") { // This cannot happen in the initialization
+                c.nextSibling(); // = 
+                c.nextSibling(); // value
+                var value = traverseExpr(c, s);
+                c.parent();
+                return {
+                    tag: "assign",
+                    name: lvalue,
+                    value: value
+                };
             }
-            else if (c.type.name == "VariableName") {
-                lvalue = s.substring(c.from, c.to);
+            else if (lvalue.tag == "id") {
                 c.nextSibling();
                 if (c.type.name == "TypeDef") {
                     c.firstChild(); //:
@@ -215,13 +239,19 @@ function traverseStmt(c, s) {
                     var value = traverseExpr(c, s);
                     c.parent();
                     if (type !== "int" && type !== "bool" && type !== "none") {
-                        throw new Error("PARSE ERROR: not a valid type");
+                        return {
+                            tag: "varinit",
+                            var: { name: lvalue.name, type: { tag: "object", class: type } },
+                            value: value
+                        };
                     }
-                    return {
-                        tag: "varinit",
-                        var: { name: lvalue, type: type },
-                        value: value
-                    };
+                    else {
+                        return {
+                            tag: "varinit",
+                            var: { name: lvalue.name, type: type },
+                            value: value
+                        };
+                    }
                 }
                 else if (c.type.name == "AssignOp") { // Assignment
                     c.nextSibling();
@@ -237,7 +267,6 @@ function traverseStmt(c, s) {
                     throw new Error("PARSE ERROR: could not parse stmt at " + c.node.from + " " + c.node.to + ": " + s.substring(c.from, c.to));
                 }
             }
-            c.nextSibling();
         case "ExpressionStatement":
             c.firstChild();
             var expr = traverseExpr(c, s);
@@ -406,7 +435,7 @@ function traverse(c, s) {
 }
 exports.traverse = traverse;
 function parse(source) {
-    var t = lezer_python_1.parser.parse(source);
+    var t = python_1.parser.parse(source);
     return traverse(t.cursor(), source);
 }
 exports.parse = parse;
@@ -425,24 +454,22 @@ function toprogram(stmts) {
             };
             varinits.push(newvar);
         }
-        else if (init_state == true) {
-            if (stmt.tag == "funcdef") {
-                var newfunc = {
-                    name: stmt.name,
-                    params: stmt.params,
-                    ret: stmt.ret,
-                    body: stmt.body
-                };
-                fundefs.push(newfunc);
-            }
-            else if (stmt.tag == "class") {
-                var classdef = {
-                    name: stmt.name,
-                    methods: stmt.methods,
-                    fields: stmt.fields
-                };
-                classdefs.push(classdef);
-            }
+        else if (init_state == true && stmt.tag == "funcdef") {
+            var newfunc = {
+                name: stmt.name,
+                params: stmt.params,
+                ret: stmt.ret,
+                body: stmt.body
+            };
+            fundefs.push(newfunc);
+        }
+        else if (init_state == true && stmt.tag == "class") {
+            var classdef = {
+                name: stmt.name,
+                methods: stmt.methods,
+                fields: stmt.fields
+            };
+            classdefs.push(classdef);
         }
         else {
             init_state = false;

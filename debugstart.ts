@@ -1,5 +1,5 @@
 import { stringifyTree } from "./treeprint";
-import {parser} from "lezer-python"
+import {parser} from "@lezer/python"
 import {parse, toprogram} from './parser';
 import { typeCheckProgram } from "./tc";
 import * as compiler from './compiler';
@@ -7,15 +7,14 @@ import * as compiler from './compiler';
 
 
 const source =
-`class C(object):
+`
+class C(object):
     x : int = 123
-class B(object):
-    y: int = 333
-    x: int = 123
 
-a: C = None
-a = C()
-print(a.x)
+c : C = None
+c = C()
+c.x = 42
+print(c.x) 
 `;
 
 console.log(source);
@@ -33,5 +32,5 @@ console.log(ast)
 const program = toprogram(ast)
 console.log(program)
 const typedprogrm = typeCheckProgram(program)
-// const compiled = compiler.compile(source);
+const compiled = compiler.compile(source);
 // console.log(ast);
