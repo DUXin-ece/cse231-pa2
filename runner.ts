@@ -27,6 +27,14 @@ export async function run(watSource : string, config: any) : Promise<number> {
   const binary = parsed.toBinary({});
   var memory = new WebAssembly.Memory({initial:10, maximum:100});
   config.mem = {heap: memory}
+  config.imports.Checkinit = (obj:number):number=> {
+    if(obj==0){
+      throw new Error("RUNTIME ERROR: object must be initialized first");
+    }
+    return obj;
+  };
+
+  console.log(config);
   const wasmModule = await WebAssembly.instantiate(binary.buffer, config);
   return (wasmModule.instance.exports as any)._start();
 }

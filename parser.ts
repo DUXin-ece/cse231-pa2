@@ -87,6 +87,12 @@ export function traverseExpr(c : TreeCursor, s : string) : Expr<null> {
         tag: "id",
         name: s.substring(c.from, c.to)
       }
+    case "ParenthesizedExpression":
+      c.firstChild();
+      c.nextSibling();
+      var newexpr = traverseExpr(c,s);
+      c.parent();
+      return newexpr;
     case "MemberExpression":
       c.firstChild();
       var obj = traverseExpr(c,s);
@@ -229,6 +235,7 @@ export function traverseExpr(c : TreeCursor, s : string) : Expr<null> {
             break;
           case "is":
             op = BinOp.Is;
+            break;
           default:
             throw new Error("PARSE ERROR: could not parse expr at " + c.from + " " + c.to + ": " + s.substring(c.from, c.to));
         };

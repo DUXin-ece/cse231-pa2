@@ -12,6 +12,7 @@ var __assign = (this && this.__assign) || function () {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.typeCheckLiteral = exports.typeCheckExpr = exports.typeCheckStmts = exports.typeCheckParams = exports.typeCheckFunDef = exports.typeCheckClassDef = exports.typeCheckVarInits = exports.returnCheckFunDef = exports.typeCheckProgram = void 0;
+var ast_1 = require("./ast");
 function duplicateEnv(env) {
     return { vars: new Map(env.vars), funs: new Map(env.funs), classes: (env.classes), retType: env.retType };
 }
@@ -292,13 +293,36 @@ function typeCheckExpr(expr, env) {
         case "binexpr":
             var left = typeCheckExpr(expr.left, env);
             var right = typeCheckExpr(expr.right, env);
-            if (left.a !== "int") {
-                throw new Error("TYPE ERROR: left must be an int");
+            switch (expr.op) {
+                case ast_1.BinOp.Plus:
+                case ast_1.BinOp.Minus:
+                case ast_1.BinOp.Mul:
+                    if (left.a !== "int") {
+                        throw new Error("TYPE ERROR: left must be an int");
+                    }
+                    if (right.a !== "int") {
+                        throw new Error("TYPE ERROR: right must be an int");
+                    }
+                    return __assign(__assign({}, expr), { a: "int", left: left, right: right });
+                case ast_1.BinOp.Eq:
+                case ast_1.BinOp.Gt:
+                case ast_1.BinOp.Lt:
+                case ast_1.BinOp.Neq:
+                case ast_1.BinOp.Ngt:
+                case ast_1.BinOp.Nlt:
+                    if (left.a !== "int") {
+                        throw new Error("TYPE ERROR: left must be an int");
+                    }
+                    if (right.a !== "int") {
+                        throw new Error("TYPE ERROR: right must be an int");
+                    }
+                    return __assign(__assign({}, expr), { a: "bool", left: left, right: right });
+                case ast_1.BinOp.Is:
+                    if (left.a === "int" || right.a === "int" || left.a === "bool" || right.a === "bool") {
+                        throw new TypeError("TYPE ERROR: Not supported type");
+                    }
+                    return __assign(__assign({}, expr), { a: "bool", left: left, right: right });
             }
-            if (right.a !== "int") {
-                throw new Error("TYPE ERROR: right must be an int");
-            }
-            return __assign(__assign({}, expr), { a: "int", left: left, right: right });
         case "lookup":
             var obj = typeCheckExpr(expr.obj, env);
             if (typeof obj.a == "object") {

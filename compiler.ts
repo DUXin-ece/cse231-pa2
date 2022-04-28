@@ -37,7 +37,7 @@ export function compile(source: string) : CompileResult {
     classes.set(c.name, c);
   });
   const globalDefines:string[] = [];
-  globalDefines.push(`(global $heap (mut i32) (i32.const 0))`);
+  globalDefines.push(`(global $heap (mut i32) (i32.const 4))`);
   globalVarsDecl.forEach(v => {
     globalDefines.push(`(global $${v} (mut i32) (i32.const 0))`);
   })
@@ -300,6 +300,7 @@ function codeGenExpr(expr : Expr<Type>, locals: LocalEnv, classes: Map<string, C
       var indexoffield = getindex(classfields, expr.field);
       return [
           ...objStmts,
+          `call $Checkinit`,
           `(i32.const ${indexoffield*4})`,
           `(i32.add)`,
           `(i32.load)`
@@ -327,6 +328,8 @@ function codeGenBinOp(op: BinOp): string{
       return "(i32.le_u)"
     case BinOp.Nlt:
       return "(i32.ge_u)"
+    case BinOp.Is:
+      return "(i32.eq)"
   }
 
 }

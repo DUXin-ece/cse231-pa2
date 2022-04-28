@@ -9,21 +9,13 @@ import * as compiler from './compiler';
 const source =
 `
 class C(object):
-    d : D = None
-    def new(self: C, d : D) -> C:
-        self.d = d
-        return self
+    x : int = 1
+    def clear(self: C) -> C:
+      return None
   
-class D(object):
-    c : C = None
-    def new(self: D, c: C) -> D:
-        self.c = c
-        return self
-    
 c : C = None
-d : D = None
-c = C().new(d)
-c.d.c
+c = C().clear()
+c
 `;
 
 console.log(source);

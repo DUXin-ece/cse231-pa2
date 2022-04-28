@@ -34,7 +34,7 @@ function compile(source) {
         classes.set(c.name, c);
     });
     var globalDefines = [];
-    globalDefines.push("(global $heap (mut i32) (i32.const 0))");
+    globalDefines.push("(global $heap (mut i32) (i32.const 4))");
     globalVarsDecl.forEach(function (v) {
         globalDefines.push("(global $" + v + " (mut i32) (i32.const 0))");
     });
@@ -315,6 +315,8 @@ function codeGenBinOp(op) {
             return "(i32.le_u)";
         case ast_1.BinOp.Nlt:
             return "(i32.ge_u)";
+        case ast_1.BinOp.Is:
+            return "(i32.eq)";
     }
 }
 function getindex(fields, field) {

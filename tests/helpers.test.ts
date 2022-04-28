@@ -35,6 +35,7 @@ export async function run(source: string) {
       (func $print_num (import "imports" "print_num") (param i32) (result i32))
       (func $print_none (import "imports" "print_none") (param i32) (result i32))
       (func $print_bool (import "imports" "print_bool") (param i32) (result i32))
+      (func $Checkinit (import "imports" "Checkinit") (param i32) (result i32))
       (func $abs (import "imports" "abs") (param i32) (result i32))
       (func $max (import "imports" "max") (param i32 i32) (result i32))
       (func $min (import "imports" "min") (param i32 i32) (result i32))
@@ -54,6 +55,12 @@ export async function run(source: string) {
     var memory = new WebAssembly.Memory({initial:10, maximum:100});
     var importObjectPlus:any = importObject;  // use importObjectPlus to add supplemental attributes
     importObjectPlus.mem = {heap: memory};
+    importObjectPlus.imports.Checkinit = (obj:number):number=> {
+      if(obj==0){
+        throw new Error("RUNTIME ERROR: object must be initialized first");
+      }
+      return obj;
+    }
     const wasmModule = await WebAssembly.instantiate(binary.buffer, importObjectPlus);
     (wasmModule.instance.exports as any)._start();
   }

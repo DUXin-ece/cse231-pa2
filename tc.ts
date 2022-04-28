@@ -1,4 +1,4 @@
-import {Program, Expr, Stmt, Literal,TypedVar,Type, VarInit, FunDef, ClassDef} from './ast';
+import {Program, Expr, Stmt, Literal,TypedVar,Type, VarInit, FunDef, ClassDef, BinOp} from './ast';
 import { NONE } from './tests/helpers.test';
 
 type TypeEnv = {
@@ -220,6 +220,7 @@ export function typeCheckStmts(stmts: Stmt<null>[], env: TypeEnv): Stmt<Type>[]{
                         throw new Error("TYPE ERROR: return type mismatch");
                     }
                 }
+                else if(typeof env.retType == "object" && typedRet.a == "none"){}
                 else if(env.retType!==typedRet.a){
                     throw new Error("TYPE ERROR: return type mismatch");
                 }
@@ -305,13 +306,37 @@ export function typeCheckExpr(expr: Expr<null>, env: TypeEnv) : Expr<Type>{
         case "binexpr":
             const left = typeCheckExpr(expr.left, env);
             const right = typeCheckExpr(expr.right, env);
-            if (left.a!== "int"){
-                throw new Error("TYPE ERROR: left must be an int");
+            switch(expr.op){
+                case BinOp.Plus:
+                case BinOp.Minus:
+                case BinOp.Mul:
+                    if (left.a!== "int"){
+                        throw new Error("TYPE ERROR: left must be an int");
+                    }
+                    if (right.a!=="int"){
+                        throw new Error("TYPE ERROR: right must be an int");
+                    }
+                    return {...expr, a: "int", left:left, right:right}
+                case BinOp.Eq:
+                case BinOp.Gt:
+                case BinOp.Lt:
+                case BinOp.Neq:
+                case BinOp.Ngt:
+                case BinOp.Nlt:
+                    if (left.a!== "int"){
+                        throw new Error("TYPE ERROR: left must be an int");
+                    }
+                    if (right.a!=="int"){
+                        throw new Error("TYPE ERROR: right must be an int");
+                    }
+                    return {...expr, a: "bool", left:left, right:right}
+                case BinOp.Is:
+                    if (left.a === "int" || right.a === "int" || left.a === "bool" || right.a === "bool" ) {
+                        throw new TypeError(`TYPE ERROR: Not supported type`)
+                    }
+                    return {...expr, a: "bool", left:left, right:right};
             }
-            if (right.a!=="int"){
-                throw new Error("TYPE ERROR: right must be an int");
-            }
-            return {...expr, a: "int", left:left, right:right}
+            
         case "lookup":
             var obj = typeCheckExpr(expr.obj, env);
             if(typeof obj.a == "object"){
