@@ -95,21 +95,23 @@ export function typeCheckClassDef(aclass: ClassDef<null>, env: TypeEnv): ClassDe
     env.funs.set(aclass.name, [undefined, {tag:"object", class: aclass.name}]);
     const localEnv = duplicateEnv(env);
     var typedclass: ClassDef<Type>;
-    var typedfields: VarInit<Type>[];
-    var typedmethods: FunDef<Type>[];
+    var typedfields: VarInit<Type>[]=[];
+    var typedmethods: FunDef<Type>[]=[];
     aclass.fields.forEach(v => {
         localEnv.vars.set(v.name, v.type);
         classenv.set(v.name, v.type);
     });
+    env.classes.set(aclass.name, classenv);
+    localEnv.classes.set(aclass.name, classenv);
     typedfields = typeCheckVarInits(aclass.fields, localEnv);
     aclass.methods.forEach(m =>{
-        var methodname = m.name + aclass.name;
+        var methodname = m.name + "$"+ aclass.name;
         localEnv.funs.set(methodname, [m.params.map(param => param.type), m.ret]);
+        env.funs.set(methodname, [m.params.map(param => param.type), m.ret]);
         classenv.set(methodname, m.ret);
         typedmethods.push(typeCheckFunDef(m, localEnv));
     });
     typedclass = {...aclass, a:{tag:"object", class: aclass.name}, fields: typedfields, methods: typedmethods}
-    env.classes.set(aclass.name, classenv);
     return typedclass;
 }
 
@@ -197,7 +199,13 @@ export function typeCheckStmts(stmts: Stmt<null>[], env: TypeEnv): Stmt<Type>[]{
                 break;
             case "return":
                 const typedRet = typeCheckExpr(stmt.ret, env);
-                if(env.retType!==typedRet.a){
+                if(typeof env.retType == "object" && typeof typedRet.a as any == "object"){
+                    var classtype:any = typedRet.a
+                    if(env.retType.class!==classtype.class){
+                        throw new Error("TYPE ERROR: return type mismatch");
+                    }
+                }
+                else if(env.retType!==typedRet.a){
                     throw new Error("TYPE ERROR: return type mismatch");
                 }
                 typedStmts.push({...stmt, ret:typedRet});
@@ -282,7 +290,7 @@ export function typeCheckExpr(expr: Expr<null>, env: TypeEnv) : Expr<Type>{
             }
             return {...expr, a: "int", left:left, right:right}
         case "lookup":
-            const obj = typeCheckExpr(expr.obj, env);
+            var obj = typeCheckExpr(expr.obj, env);
             if(typeof obj.a == "object"){
                 if(obj.a.tag!="object"){
                     throw new Error("TYPE ERROR: not an object");
@@ -291,9 +299,37 @@ export function typeCheckExpr(expr: Expr<null>, env: TypeEnv) : Expr<Type>{
             else{
                 throw new Error("TYPE ERROR: not an object");
             }
-            const classinfo = env.classes.get(obj.a.class);
-            const fieldtype = classinfo.get(expr.field);
+            var classinfo = env.classes.get(obj.a.class);
+            var fieldtype = classinfo.get(expr.field);
             return {...expr, a:fieldtype, obj:obj}
+        case "method":
+            var obj = typeCheckExpr(expr.obj, env)
+            if(typeof obj.a == "object"){
+                if(obj.a.tag!="object"){
+                    throw new Error("TYPE ERROR: not an object");
+                }
+            }
+            else{
+                throw new Error("TYPE ERROR: not an object");
+            }
+            var classname = obj.a.class;
+            var argself:any =  {a:{ tag: "object", class: classname }, tag: "id", name: "self"}
+            var newargs:Expr<Type>[] = [];
+            newargs.push(argself);
+            var realargs = expr.args.map(a=> typeCheckExpr(a, env));
+            newargs = newargs.concat(realargs);
+            var methodname = expr.name + "$" + classname
+            var [argTypes, retType] = env.funs.get(methodname);
+            argTypes.forEach((t,i) =>{
+                if(typeof t =="object"&& typeof newargs[i].a == "object"){
+                    var a:any = newargs[i].a
+                    if(t.class !== a.class) {throw new Error("TYPE ERROR: mismatch")}
+                }
+                else if(t!==newargs[i].a) {throw new Error("TYPE ERROR: mismatch")}
+            })
+            
+            return {...expr, obj:obj, args: newargs, a:retType}
+            
     }
 }
 

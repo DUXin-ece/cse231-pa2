@@ -29,10 +29,13 @@ export function traverseType(s : string, t : TreeCursor) : Type {
   switch(t.type.name) {
     case "VariableName":
       const name = s.substring(t.from, t.to);
-      if(name !== "int") {
-        throw new Error("Unknown type: " + name)
+      if(name == "int"||name=="none" || name=="bool") {
+        return name;
       }
-      return name;
+      else{
+        return {tag:"object", class: name};
+      }
+      
     default:
       throw new Error("Unknown type: " + t.type.name)
 
@@ -98,43 +101,61 @@ export function traverseExpr(c : TreeCursor, s : string) : Expr<null> {
       }
     case "CallExpression":
       c.firstChild();
-      const callName = s.substring(c.from, c.to);
-      c.nextSibling(); // go to arglist
-      var args = traverseArgs(c,s);
-      if(callName=="abs" || callName=="print"){ 
-        c.parent();// pop CallExpression
-        if(args.length==1){
-          return {
-            tag: "builtin1",
-            name: callName,
-            arg: args[0]
-          };
+      if(c.type.name as any == "VariableName"){  // This is a function
+        const callName = s.substring(c.from, c.to);
+        c.nextSibling(); // go to arglist
+        var args = traverseArgs(c,s);
+        if(callName=="abs" || callName=="print"){ 
+          c.parent();// pop CallExpression
+          if(args.length==1){
+            return {
+              tag: "builtin1",
+              name: callName,
+              arg: args[0]
+            };
+          }
+          else{
+            throw new Error("PARSE ERROR: incorrect arity")
+          }
+        }
+        else if(callName=="max" || callName=="min" || callName=="pow"){
+          c.parent();
+          if(args.length==1){
+            return {
+              tag: "builtin2",
+              name: callName,
+              arg1: args[0],
+              arg2: args[1]
+            };;
+          }
+          else{
+            throw new Error("PARSE ERROR: incorrect arity")
+          }
         }
         else{
-          throw new Error("PARSE ERROR: incorrect arity")
-        }
-      }
-      else if(callName=="max" || callName=="min" || callName=="pow"){
-        c.parent();
-        if(args.length==1){
+          c.parent();
           return {
-            tag: "builtin2",
-            name: callName,
-            arg1: args[0],
-            arg2: args[1]
-          };;
-        }
-        else{
-          throw new Error("PARSE ERROR: incorrect arity")
+            tag: "call", name:callName, args: args
+          }
         }
       }
       else{
+        c.firstChild();  //focus on obj
+        var obj = traverseExpr(c, s);
+        c.nextSibling();
+        c.nextSibling();
+        var name = s.substring(c.from, c.to);
+        c.parent();
+        c.nextSibling();
+        var args = traverseArgs(c,s);
         c.parent();
         return {
-          tag: "call", name:callName, args: args
+          tag:"method",
+          obj: obj,
+          name: name,
+          args: args,
         }
       }
-      
       case "UnaryExpression":
         c.firstChild();
         var uniop = s.substring(c.from, c.to);

@@ -96,21 +96,23 @@ function typeCheckClassDef(aclass, env) {
     env.funs.set(aclass.name, [undefined, { tag: "object", class: aclass.name }]);
     var localEnv = duplicateEnv(env);
     var typedclass;
-    var typedfields;
-    var typedmethods;
+    var typedfields = [];
+    var typedmethods = [];
     aclass.fields.forEach(function (v) {
         localEnv.vars.set(v.name, v.type);
         classenv.set(v.name, v.type);
     });
+    env.classes.set(aclass.name, classenv);
+    localEnv.classes.set(aclass.name, classenv);
     typedfields = typeCheckVarInits(aclass.fields, localEnv);
     aclass.methods.forEach(function (m) {
-        var methodname = m.name + aclass.name;
+        var methodname = m.name + "$" + aclass.name;
         localEnv.funs.set(methodname, [m.params.map(function (param) { return param.type; }), m.ret]);
+        env.funs.set(methodname, [m.params.map(function (param) { return param.type; }), m.ret]);
         classenv.set(methodname, m.ret);
         typedmethods.push(typeCheckFunDef(m, localEnv));
     });
     typedclass = __assign(__assign({}, aclass), { a: { tag: "object", class: aclass.name }, fields: typedfields, methods: typedmethods });
-    env.classes.set(aclass.name, classenv);
     return typedclass;
 }
 exports.typeCheckClassDef = typeCheckClassDef;
@@ -193,7 +195,13 @@ function typeCheckStmts(stmts, env) {
                 break;
             case "return":
                 var typedRet = typeCheckExpr(stmt.ret, env);
-                if (env.retType !== typedRet.a) {
+                if (typeof env.retType == "object" && typeof typedRet.a == "object") {
+                    var classtype = typedRet.a;
+                    if (env.retType.class !== classtype.class) {
+                        throw new Error("TYPE ERROR: return type mismatch");
+                    }
+                }
+                else if (env.retType !== typedRet.a) {
                     throw new Error("TYPE ERROR: return type mismatch");
                 }
                 typedStmts.push(__assign(__assign({}, stmt), { ret: typedRet }));
@@ -282,6 +290,36 @@ function typeCheckExpr(expr, env) {
             var classinfo = env.classes.get(obj.a.class);
             var fieldtype = classinfo.get(expr.field);
             return __assign(__assign({}, expr), { a: fieldtype, obj: obj });
+        case "method":
+            var obj = typeCheckExpr(expr.obj, env);
+            if (typeof obj.a == "object") {
+                if (obj.a.tag != "object") {
+                    throw new Error("TYPE ERROR: not an object");
+                }
+            }
+            else {
+                throw new Error("TYPE ERROR: not an object");
+            }
+            var classname = obj.a.class;
+            var argself = { a: { tag: "object", class: classname }, tag: "id", name: "self" };
+            var newargs = [];
+            newargs.push(argself);
+            var realargs = expr.args.map(function (a) { return typeCheckExpr(a, env); });
+            newargs = newargs.concat(realargs);
+            var methodname = expr.name + "$" + classname;
+            var _a = env.funs.get(methodname), argTypes = _a[0], retType = _a[1];
+            argTypes.forEach(function (t, i) {
+                if (typeof t == "object" && typeof newargs[i].a == "object") {
+                    var a = newargs[i].a;
+                    if (t.class !== a.class) {
+                        throw new Error("TYPE ERROR: mismatch");
+                    }
+                }
+                else if (t !== newargs[i].a) {
+                    throw new Error("TYPE ERROR: mismatch");
+                }
+            });
+            return __assign(__assign({}, expr), { obj: obj, args: newargs, a: retType });
     }
 }
 exports.typeCheckExpr = typeCheckExpr;

@@ -23,6 +23,7 @@ export type Expr<A> =
     {a?:A, tag: "literal", literal: Literal<A> }
   | {a?:A, tag: "id", name: string }
   | {a?:A, tag: "call", name: string, args: Expr<A>[]}
+  | {a?:A, tag: "method", obj: Expr<A>, name: string, args:Expr<A>[]}
   | {a?:A, tag: "builtin1", name: string, arg: Expr<A> }
   | {a?:A, tag: "builtin2", name: string, arg1: Expr<A>, arg2: Expr<A>}
   | {a?:A, tag: "binexpr", op: BinOp , left: Expr<A>, right: Expr<A>}

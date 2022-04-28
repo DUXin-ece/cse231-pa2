@@ -50,7 +50,7 @@ export function compile(source: string) : CompileResult {
   return {
     varinits: globalDefines.join("\n"),
     funcdef: [...FuncdefGroups].join("\n"),
-    methoddef: [...MethodGroups].join("\n"),
+    methoddef: MethodGroups.flat().join("\n"),
     wasmSource: commands.join("\n")
   };
 }
@@ -105,14 +105,15 @@ export function codeGenMethod(classdef:ClassDef<Type>, locals:LocalEnv, classes:
       m.body.map(s=>{stmts.push(codeGenStmt(s, withParamsAndVariables, classes, globals))});
       var flattenstmts = [].concat(...stmts)
       var stmtsBody = flattenstmts.join("\n");
-      wasmmethods.concat([`(func $${m.name}$${classdef.name} ${params} (result i32)
+      wasmmethods.push(`(func $${m.name}$${classdef.name} ${params} (result i32)
           (local $scratch i32)
           ${varDecls}
           ${stmtsBody}
-          (i32.const 0))`]);
+          (i32.const 0))
+          `);
     })
   }
-  return wasmmethods;
+  return [...wasmmethods];
 }
 
 
@@ -240,6 +241,20 @@ function codeGenExpr(expr : Expr<Type>, locals: LocalEnv, classes: Map<string, C
         const flattenargList = [].concat(...argList);
         return flattenargList.concat([`(call $${expr.name})`]);
       }
+    case "method":
+      
+      var args = expr.args.map(a => 
+        codeGenExpr(a, locals, classes, globals)).flat();
+      var selfcode = codeGenExpr(expr.obj, locals, classes, globals);
+      if(expr.obj.tag=="id"){
+        args[0] = selfcode.join("\n");
+      }
+      else if(expr.obj.tag=="lookup"){
+        selfcode.pop();
+        args[0] = selfcode.join("\n");
+      }
+      var classtype:any = expr.obj.a
+      return [...args, `call $${expr.name}$${classtype.class}`]
     case "literal":
       if(expr.literal.tag=="num"){
         return ["(i32.const " + expr.literal.value + ")"];

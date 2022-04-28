@@ -10,11 +10,15 @@ const source =
 `
 class C(object):
     x : int = 123
+    def new(self: C, x: int) -> C:
+        print(self.x)
+        self.x = x
+        print(self.x)
+        return self
+    def clear(self: C) -> C:
+        return self.new(123)
 
-c : C = None
-c = C()
-c.x = 42
-print(c.x) 
+C().new(42).clear()
 `;
 
 console.log(source);

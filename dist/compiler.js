@@ -46,7 +46,7 @@ function compile(source) {
     return {
         varinits: globalDefines.join("\n"),
         funcdef: __spreadArrays(FuncdefGroups).join("\n"),
-        methoddef: __spreadArrays(MethodGroups).join("\n"),
+        methoddef: MethodGroups.flat().join("\n"),
         wasmSource: commands.join("\n")
     };
 }
@@ -92,10 +92,10 @@ function codeGenMethod(classdef, locals, classes, globals) {
             m.body.map(function (s) { stmts.push(codeGenStmt(s, withParamsAndVariables, classes, globals)); });
             var flattenstmts = [].concat.apply([], stmts);
             var stmtsBody = flattenstmts.join("\n");
-            wasmmethods.concat(["(func $" + m.name + "$" + classdef.name + " " + params + " (result i32)\n          (local $scratch i32)\n          " + varDecls + "\n          " + stmtsBody + "\n          (i32.const 0))"]);
+            wasmmethods.push("(func $" + m.name + "$" + classdef.name + " " + params + " (result i32)\n          (local $scratch i32)\n          " + varDecls + "\n          " + stmtsBody + "\n          (i32.const 0))\n          ");
         });
     }
-    return wasmmethods;
+    return __spreadArrays(wasmmethods);
 }
 exports.codeGenMethod = codeGenMethod;
 function codeGenStmt(stmt, locals, classes, globals) {
@@ -237,6 +237,20 @@ function codeGenExpr(expr, locals, classes, globals) {
                 var flattenargList = [].concat.apply([], argList);
                 return flattenargList.concat(["(call $" + expr.name + ")"]);
             }
+        case "method":
+            var args = expr.args.map(function (a) {
+                return codeGenExpr(a, locals, classes, globals);
+            }).flat();
+            var selfcode = codeGenExpr(expr.obj, locals, classes, globals);
+            if (expr.obj.tag == "id") {
+                args[0] = selfcode.join("\n");
+            }
+            else if (expr.obj.tag == "lookup") {
+                selfcode.pop();
+                args[0] = selfcode.join("\n");
+            }
+            var classtype = expr.obj.a;
+            return __spreadArrays(args, ["call $" + expr.name + "$" + classtype.class]);
         case "literal":
             if (expr.literal.tag == "num") {
                 return ["(i32.const " + expr.literal.value + ")"];
