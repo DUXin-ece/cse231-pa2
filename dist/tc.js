@@ -216,6 +216,7 @@ function typeCheckStmts(stmts, env) {
                         throw new Error("TYPE ERROR: return type mismatch");
                     }
                 }
+                else if (typeof env.retType == "object" && typedRet.a == "none") { }
                 else if (env.retType !== typedRet.a) {
                     throw new Error("TYPE ERROR: return type mismatch");
                 }
@@ -235,6 +236,14 @@ function typeCheckStmts(stmts, env) {
                 });
                 stmt.elifbody.forEach(function (s_arr) {
                     typedelifStmts.push(typeCheckStmts(s_arr, env));
+                });
+                if (typedifCond.a != "bool") {
+                    throw new Error("TYPE ERROR: expect boolean expression");
+                }
+                typedelifCond.forEach(function (e) {
+                    if (e.a != "bool") {
+                        throw new Error("TYPE ERROR: expect boolean expression");
+                    }
                 });
                 typedStmts.push(__assign(__assign({}, stmt), { a: "none", ifexpr: typedifCond, ifbody: typedifStmts, elifexpr: typedelifCond, elifbody: typedelifStmts, elsebody: typedelseStmts }));
                 break;

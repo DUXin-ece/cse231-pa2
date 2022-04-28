@@ -289,6 +289,7 @@ function codeGenExpr(expr, locals, classes, globals) {
             var classfields = classes.get(classtype.class).fields;
             var indexoffield = getindex(classfields, expr.field);
             return __spreadArrays(objStmts, [
+                "call $Checkinit",
                 "(i32.const " + indexoffield * 4 + ")",
                 "(i32.add)",
                 "(i32.load)"

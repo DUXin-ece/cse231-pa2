@@ -4,18 +4,33 @@ import {parse, toprogram} from './parser';
 import { typeCheckProgram } from "./tc";
 import * as compiler from './compiler';
 
+const hidden2 = 
+`
+class C(object):
+  def f(self : C, x : int) -> int:
+    return x * 2
+
+c : C = None
+c = C()
+if c.f(c.f(2)):
+  pass
+else:
+  pass
+`
 
 
 const source =
 `
 class C(object):
-    x : int = 1
-    def clear(self: C) -> C:
-      return None
-  
+  def f(self : C, x : int) -> int:
+    return x * 2
+
 c : C = None
-c = C().clear()
-c
+c = C()
+if c.f(c.f(2)):
+  pass
+else:
+  pass
 `;
 
 console.log(source);

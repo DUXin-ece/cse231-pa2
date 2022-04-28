@@ -78,6 +78,13 @@ function run(watSource, config) {
                     binary = parsed.toBinary({});
                     memory = new WebAssembly.Memory({ initial: 10, maximum: 100 });
                     config.mem = { heap: memory };
+                    config.imports.Checkinit = function (obj) {
+                        if (obj == 0) {
+                            throw new Error("RUNTIME ERROR: object must be initialized first");
+                        }
+                        return obj;
+                    };
+                    console.log(config);
                     return [4 /*yield*/, WebAssembly.instantiate(binary.buffer, config)];
                 case 2:
                     wasmModule = _a.sent();

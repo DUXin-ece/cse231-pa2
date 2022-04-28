@@ -241,7 +241,14 @@ export function typeCheckStmts(stmts: Stmt<null>[], env: TypeEnv): Stmt<Type>[]{
                 stmt.elifbody.forEach(s_arr=>{
                     typedelifStmts.push(typeCheckStmts(s_arr, env))
                 })
-
+                if(typedifCond.a!="bool"){
+                    throw new Error("TYPE ERROR: expect boolean expression");
+                }
+                typedelifCond.forEach(e =>{
+                    if(e.a!="bool"){
+                        throw new Error("TYPE ERROR: expect boolean expression");
+                    }
+                })
                 typedStmts.push({...stmt, a: "none",
                 ifexpr: typedifCond,
                 ifbody: typedifStmts,
