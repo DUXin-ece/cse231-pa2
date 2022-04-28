@@ -238,19 +238,20 @@ function codeGenExpr(expr, locals, classes, globals) {
                 return flattenargList.concat(["(call $" + expr.name + ")"]);
             }
         case "method":
-            var args = expr.args.map(function (a) {
+            var args = expr.args.slice(1).map(function (a) {
                 return codeGenExpr(a, locals, classes, globals);
             }).flat();
             var selfcode = codeGenExpr(expr.obj, locals, classes, globals);
-            if (expr.obj.tag == "id") {
-                args[0] = selfcode.join("\n");
+            if (expr.obj.tag == "id" || expr.obj.tag == "method") {
             }
             else if (expr.obj.tag == "lookup") {
                 selfcode.pop();
-                args[0] = selfcode.join("\n");
+            }
+            else if (expr.obj.tag == "call") {
+                selfcode.push("global.get $heap");
             }
             var classtype = expr.obj.a;
-            return __spreadArrays(args, ["call $" + expr.name + "$" + classtype.class]);
+            return __spreadArrays(selfcode, args, ["call $" + expr.name + "$" + classtype.class]);
         case "literal":
             if (expr.literal.tag == "num") {
                 return ["(i32.const " + expr.literal.value + ")"];

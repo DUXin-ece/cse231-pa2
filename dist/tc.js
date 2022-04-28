@@ -233,7 +233,7 @@ function typeCheckStmts(stmts, env) {
                 break;
             case "expr":
                 var typedExpr = typeCheckExpr(stmt.expr, env);
-                typedStmts.push(__assign(__assign({}, stmt), { a: "none", expr: typedExpr }));
+                typedStmts.push(__assign(__assign({}, stmt), { a: typedExpr.a, expr: typedExpr }));
                 break;
         }
     });

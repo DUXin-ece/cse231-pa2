@@ -53,7 +53,9 @@ function typeCheck(source) {
     if (typedprogram.stmts.length == 0) {
         return "none";
     }
-    return "none";
+    else {
+        return typedprogram.stmts[typedprogram.stmts.length - 1].a;
+    }
 }
 exports.typeCheck = typeCheck;
 // Modify run to use `importObject` (imported above) to use for printing

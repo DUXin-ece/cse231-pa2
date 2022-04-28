@@ -12,7 +12,9 @@ export function typeCheck(source: string) : Type {
   if(typedprogram.stmts.length == 0){
     return "none";
   }
-  return "none";
+  else{
+    return typedprogram.stmts[typedprogram.stmts.length-1].a;
+  }
 }
 
 // Modify run to use `importObject` (imported above) to use for printing

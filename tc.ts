@@ -245,7 +245,7 @@ export function typeCheckStmts(stmts: Stmt<null>[], env: TypeEnv): Stmt<Type>[]{
                 break;
             case "expr":
                 var typedExpr = typeCheckExpr(stmt.expr, env);
-                typedStmts.push({...stmt, a: "none", expr:typedExpr});
+                typedStmts.push({...stmt, a: typedExpr.a, expr:typedExpr});
                 break;
         }
     })

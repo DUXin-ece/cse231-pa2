@@ -242,19 +242,18 @@ function codeGenExpr(expr : Expr<Type>, locals: LocalEnv, classes: Map<string, C
         return flattenargList.concat([`(call $${expr.name})`]);
       }
     case "method":
-      
-      var args = expr.args.map(a => 
+      var args = expr.args.slice(1).map(a => 
         codeGenExpr(a, locals, classes, globals)).flat();
       var selfcode = codeGenExpr(expr.obj, locals, classes, globals);
-      if(expr.obj.tag=="id"){
-        args[0] = selfcode.join("\n");
+      if(expr.obj.tag=="id" || expr.obj.tag=="method"){
       }
       else if(expr.obj.tag=="lookup"){
         selfcode.pop();
-        args[0] = selfcode.join("\n");
+      }
+      else if (expr.obj.tag=="call"){
       }
       var classtype:any = expr.obj.a
-      return [...args, `call $${expr.name}$${classtype.class}`]
+      return [...selfcode, ...args, `call $${expr.name}$${classtype.class}`]
     case "literal":
       if(expr.literal.tag=="num"){
         return ["(i32.const " + expr.literal.value + ")"];
