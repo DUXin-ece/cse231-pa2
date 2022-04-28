@@ -17,21 +17,16 @@ if c.f(c.f(2)):
 else:
   pass
 `
-
-
-const source =
+const hidden4=
 `
 class C(object):
-  def f(self : C, x : int) -> int:
-    return x * 2
+    def none(self: C) -> C:
+        return None
+  
+C().none()
+`
 
-c : C = None
-c = C()
-if c.f(c.f(2)):
-  pass
-else:
-  pass
-`;
+const source =hidden4;
 
 console.log(source);
 
