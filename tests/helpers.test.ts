@@ -6,7 +6,6 @@ import { typeCheckProgram } from "../tc";
 
 // Modify typeCheck to return a `Type` as we have specified below
 export function typeCheck(source: string) : Type {
-  throw new Error(source);
   const parsed = parse(source);
   const program = toprogram(parsed);
   const typedprogram = typeCheckProgram(program);
@@ -20,7 +19,6 @@ export function typeCheck(source: string) : Type {
 
 // Modify run to use `importObject` (imported above) to use for printing
 export async function run(source: string) {
-  throw new Error(source);
   const program = source;
   try {
     const parsed = parse(program);
