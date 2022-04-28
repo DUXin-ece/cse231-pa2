@@ -19,6 +19,7 @@ export function typeCheck(source: string) : Type {
 
 // Modify run to use `importObject` (imported above) to use for printing
 export async function run(source: string) {
+  throw new Error(source);
   const program = source;
   try {
     const parsed = parse(program);
