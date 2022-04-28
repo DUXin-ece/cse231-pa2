@@ -6,6 +6,7 @@ import { typeCheckProgram } from "../tc";
 
 // Modify typeCheck to return a `Type` as we have specified below
 export function typeCheck(source: string) : Type {
+  throw new Error(source);
   const parsed = parse(source);
   const program = toprogram(parsed);
   const typedprogram = typeCheckProgram(program);
