@@ -24,7 +24,7 @@ var python_1 = require("@lezer/python");
 var parser_1 = require("./parser");
 var tc_1 = require("./tc");
 var compiler = __importStar(require("./compiler"));
-var source = "\nclass C(object):\n    x : int = 123\n    def new(self: C, x: int) -> C:\n        print(self.x)\n        self.x = x\n        print(self.x)\n        return self\n    def clear(self: C) -> C:\n        return self.new(123)\n\nC().new(42).clear()\n";
+var source = "\nclass C(object):\n    d : D = None\n    def new(self: C, d : D) -> C:\n        self.d = d\n        return self\n  \nclass D(object):\n    c : C = None\n    def new(self: D, c: C) -> D:\n        self.c = c\n        return self\n    \nc : C = None\nd : D = None\nc = C().new(d)\nc.d.c\n";
 console.log(source);
 var tree = python_1.parser.parse(source);
 var cursor = tree.cursor();

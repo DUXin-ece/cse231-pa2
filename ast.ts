@@ -1,3 +1,5 @@
+import { UnionType } from "typescript"
+
 export type Program<A> = { varinits: VarInit<A>[], fundefs:FunDef<A>[], classdefs: ClassDef<A>[], stmts: Stmt<A>[]}
 
 export type VarInit<A> = {a?:A, name: string, type: Type, init: Expr<A>} // A: Anotation
@@ -27,6 +29,7 @@ export type Expr<A> =
   | {a?:A, tag: "builtin1", name: string, arg: Expr<A> }
   | {a?:A, tag: "builtin2", name: string, arg1: Expr<A>, arg2: Expr<A>}
   | {a?:A, tag: "binexpr", op: BinOp , left: Expr<A>, right: Expr<A>}
+  | {a?:A, tag: "uniexpr", op: UniOp, expr: Expr<A>}
   | {a?:A, tag: "lookup", obj: Expr<A>, field:string}
 
 export type Literal<A> = 
@@ -34,9 +37,8 @@ export type Literal<A> =
   | {a?:A, tag: "bool", value: boolean}
   | {a?:A, tag: "none"}
 
-export enum BinOp{Plus="+", Minus="-", Mul="*", Eq="==", Neq="!=", Nlt=">=", Ngt="<=", Gt=">", Lt="<"}
-
-// export enum Type{int="int", bool="bool", none="none"}
+export enum BinOp{Plus="+", Minus="-", Mul="*", Eq="==", Neq="!=", Nlt=">=", Ngt="<=", Gt=">", Lt="<", Is="is"}
+export enum UniOp{Not = "not"}
 
 export type Type = 
     "int"

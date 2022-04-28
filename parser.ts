@@ -1,7 +1,7 @@
 import {parser} from "@lezer/python";
 import {TreeCursor} from "@lezer/common";
 import { visitFunctionBody } from "typescript";
-import {Program, BinOp, Expr, Stmt, Type, TypedVar, VarInit, FunDef, ClassDef} from "./ast";
+import {Program, BinOp, UniOp, Expr, Stmt, Type, TypedVar, VarInit, FunDef, ClassDef} from "./ast";
 
 export function traverseParameters(s : string, t : TreeCursor) : Array<TypedVar<null>> {
   t.firstChild();  // Focuses on open paren
@@ -159,19 +159,41 @@ export function traverseExpr(c : TreeCursor, s : string) : Expr<null> {
       case "UnaryExpression":
         c.firstChild();
         var uniop = s.substring(c.from, c.to);
-        if(uniop!=="+" && uniop!=="-"){
-          throw new Error("PARSE ERROR: could not parse this UinaryExpression");
+        switch(uniop){
+          case "+" :
+            c.nextSibling();
+            var number = Number(uniop + s.substring(c.from, c.to));
+            if(isNaN(number)){
+              throw new Error("PARSE ERROR: could not parse this UinaryExpression");
+            }
+            c.parent();
+            return {
+              tag: "literal",
+              literal: {tag:"num", value: number} 
+            }
+          case "-":
+            c.nextSibling();
+            var number = Number(uniop + s.substring(c.from, c.to));
+            if(isNaN(number)){
+              throw new Error("PARSE ERROR: could not parse this UinaryExpression");
+            }
+            c.parent();
+            return {
+              tag: "literal",
+              literal: {tag:"num", value: number} 
+            }
+          case "not":
+            c.nextSibling();
+            var expr = traverseExpr(c,s);
+            c.parent();
+            return {
+              tag: "uniexpr",
+              op: UniOp.Not,
+              expr: expr
+            }
+          default: throw new Error("PARSE ERROR: could not parse this UinaryExpression");
         }
-        c.nextSibling();
-        var number = Number(uniop + s.substring(c.from, c.to));
-        if(isNaN(number)){
-          throw new Error("PARSE ERROR: could not parse this UinaryExpression");
-        }
-        c.parent();
-        return {
-          tag: "literal",
-          literal: {tag:"num", value: number} 
-        }
+        
       case "BinaryExpression": 
         c.firstChild();
         const left = traverseExpr(c, s);
@@ -205,6 +227,8 @@ export function traverseExpr(c : TreeCursor, s : string) : Expr<null> {
           case "<":
             op = BinOp.Lt;  // less than
             break;
+          case "is":
+            op = BinOp.Is;
           default:
             throw new Error("PARSE ERROR: could not parse expr at " + c.from + " " + c.to + ": " + s.substring(c.from, c.to));
         };

@@ -277,6 +277,22 @@ function codeGenExpr(expr : Expr<Type>, locals: LocalEnv, classes: Map<string, C
       const rightStmts = codeGenExpr(expr.right, locals, classes, globals);
       const opStmt = codeGenBinOp(expr.op);
       return [...leftStmts, ...rightStmts, opStmt]
+    case "uniexpr":
+      const boolexpr = codeGenExpr(expr.expr, locals, classes, globals);
+      return[
+        ...boolexpr,
+        `(if
+          (then
+            i32.const 0
+            (local.set $scratch)
+          )
+          (else
+            i32.const 1
+            (local.set $scratch)
+          )
+        )
+        (local.get $scratch)`
+      ]
     case "lookup":
       const objStmts = codeGenExpr(expr.obj, locals, classes, globals);
       var classtype:any = expr.obj.a;

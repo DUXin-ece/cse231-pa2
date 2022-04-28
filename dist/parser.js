@@ -160,19 +160,40 @@ function traverseExpr(c, s) {
         case "UnaryExpression":
             c.firstChild();
             var uniop = s.substring(c.from, c.to);
-            if (uniop !== "+" && uniop !== "-") {
-                throw new Error("PARSE ERROR: could not parse this UinaryExpression");
+            switch (uniop) {
+                case "+":
+                    c.nextSibling();
+                    var number = Number(uniop + s.substring(c.from, c.to));
+                    if (isNaN(number)) {
+                        throw new Error("PARSE ERROR: could not parse this UinaryExpression");
+                    }
+                    c.parent();
+                    return {
+                        tag: "literal",
+                        literal: { tag: "num", value: number }
+                    };
+                case "-":
+                    c.nextSibling();
+                    var number = Number(uniop + s.substring(c.from, c.to));
+                    if (isNaN(number)) {
+                        throw new Error("PARSE ERROR: could not parse this UinaryExpression");
+                    }
+                    c.parent();
+                    return {
+                        tag: "literal",
+                        literal: { tag: "num", value: number }
+                    };
+                case "not":
+                    c.nextSibling();
+                    var expr = traverseExpr(c, s);
+                    c.parent();
+                    return {
+                        tag: "uniexpr",
+                        op: ast_1.UniOp.Not,
+                        expr: expr
+                    };
+                default: throw new Error("PARSE ERROR: could not parse this UinaryExpression");
             }
-            c.nextSibling();
-            var number = Number(uniop + s.substring(c.from, c.to));
-            if (isNaN(number)) {
-                throw new Error("PARSE ERROR: could not parse this UinaryExpression");
-            }
-            c.parent();
-            return {
-                tag: "literal",
-                literal: { tag: "num", value: number }
-            };
         case "BinaryExpression":
             c.firstChild();
             var left = traverseExpr(c, s);
@@ -206,6 +227,8 @@ function traverseExpr(c, s) {
                 case "<":
                     op = ast_1.BinOp.Lt; // less than
                     break;
+                case "is":
+                    op = ast_1.BinOp.Is;
                 default:
                     throw new Error("PARSE ERROR: could not parse expr at " + c.from + " " + c.to + ": " + s.substring(c.from, c.to));
             }

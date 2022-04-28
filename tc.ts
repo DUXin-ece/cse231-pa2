@@ -178,8 +178,14 @@ export function typeCheckStmts(stmts: Stmt<null>[], env: TypeEnv): Stmt<Type>[]{
                         throw new Error("TYPE ERROR: unbound id");
                     }
                     var typedValue = typeCheckExpr(stmt.value, env);
-                    if(typeof typedValue.a=="object" && typeof varname=="object"){
-                        if(typedValue.a.class !== varname.class){
+                    if(typeof varname=="object"){
+                        if (typedValue.a=="none"){
+                            // Allow
+                        }
+                        else if(typeof typedValue.a=="object" && typedValue.a.class == varname.class){
+                            // Allow
+                        }
+                        else{
                             throw new Error("TYPE ERROR: cannot assign value to id");
                         }
                     }
@@ -191,7 +197,16 @@ export function typeCheckStmts(stmts: Stmt<null>[], env: TypeEnv): Stmt<Type>[]{
                 else if(stmt.name.tag=="lookup"){
                     var typedValue = typeCheckExpr(stmt.value, env);
                     var typedLValue = typeCheckExpr(stmt.name, env);
-                    if(typedLValue.a != typedValue.a){
+                    if(typeof typedLValue.a=="object"){
+                        if(typeof typedValue.a =="object" && typedLValue.a.class==typedValue.a.class){
+
+                        }
+                        else if(typedValue.a =="none"){}
+                        else{
+                            throw new Error("TYPE ERROR: cannot assign value to lookup");
+                        }
+                    }
+                    else if(typedLValue.a != typedValue.a){
                         throw new Error("TYPE ERROR: cannot assign value to lookup");
                     }
                     typedStmts.push({...stmt, value: typedValue, name: typedLValue as any, a: typedValue.a});
@@ -279,6 +294,14 @@ export function typeCheckExpr(expr: Expr<null>, env: TypeEnv) : Expr<Type>{
         case "call":
             var func = env.funs.get(expr.name);
             return {...expr, a: func[1]}  // 1 is return type
+        case "uniexpr":
+            const boolexpr = typeCheckExpr(expr.expr, env);
+            if(boolexpr.a!=="bool"){
+                throw new Error("TYPE ERROR: Not a boolean expression");
+            }
+            else{
+                return {...expr, a: boolexpr.a};
+            }
         case "binexpr":
             const left = typeCheckExpr(expr.left, env);
             const right = typeCheckExpr(expr.right, env);

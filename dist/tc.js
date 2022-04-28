@@ -174,8 +174,14 @@ function typeCheckStmts(stmts, env) {
                         throw new Error("TYPE ERROR: unbound id");
                     }
                     var typedValue = typeCheckExpr(stmt.value, env);
-                    if (typeof typedValue.a == "object" && typeof varname == "object") {
-                        if (typedValue.a.class !== varname.class) {
+                    if (typeof varname == "object") {
+                        if (typedValue.a == "none") {
+                            // Allow
+                        }
+                        else if (typeof typedValue.a == "object" && typedValue.a.class == varname.class) {
+                            // Allow
+                        }
+                        else {
                             throw new Error("TYPE ERROR: cannot assign value to id");
                         }
                     }
@@ -187,7 +193,15 @@ function typeCheckStmts(stmts, env) {
                 else if (stmt.name.tag == "lookup") {
                     var typedValue = typeCheckExpr(stmt.value, env);
                     var typedLValue = typeCheckExpr(stmt.name, env);
-                    if (typedLValue.a != typedValue.a) {
+                    if (typeof typedLValue.a == "object") {
+                        if (typeof typedValue.a == "object" && typedLValue.a.class == typedValue.a.class) {
+                        }
+                        else if (typedValue.a == "none") { }
+                        else {
+                            throw new Error("TYPE ERROR: cannot assign value to lookup");
+                        }
+                    }
+                    else if (typedLValue.a != typedValue.a) {
                         throw new Error("TYPE ERROR: cannot assign value to lookup");
                     }
                     typedStmts.push(__assign(__assign({}, stmt), { value: typedValue, name: typedLValue, a: typedValue.a }));
@@ -267,6 +281,14 @@ function typeCheckExpr(expr, env) {
         case "call":
             var func = env.funs.get(expr.name);
             return __assign(__assign({}, expr), { a: func[1] }); // 1 is return type
+        case "uniexpr":
+            var boolexpr = typeCheckExpr(expr.expr, env);
+            if (boolexpr.a !== "bool") {
+                throw new Error("TYPE ERROR: Not a boolean expression");
+            }
+            else {
+                return __assign(__assign({}, expr), { a: boolexpr.a });
+            }
         case "binexpr":
             var left = typeCheckExpr(expr.left, env);
             var right = typeCheckExpr(expr.right, env);

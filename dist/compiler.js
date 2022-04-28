@@ -248,7 +248,6 @@ function codeGenExpr(expr, locals, classes, globals) {
                 selfcode.pop();
             }
             else if (expr.obj.tag == "call") {
-                selfcode.push("global.get $heap");
             }
             var classtype = expr.obj.a;
             return __spreadArrays(selfcode, args, ["call $" + expr.name + "$" + classtype.class]);
@@ -279,6 +278,11 @@ function codeGenExpr(expr, locals, classes, globals) {
             var rightStmts = codeGenExpr(expr.right, locals, classes, globals);
             var opStmt = codeGenBinOp(expr.op);
             return __spreadArrays(leftStmts, rightStmts, [opStmt]);
+        case "uniexpr":
+            var boolexpr = codeGenExpr(expr.expr, locals, classes, globals);
+            return __spreadArrays(boolexpr, [
+                "(if\n          (then\n            i32.const 0\n            (local.set $scratch)\n          )\n          (else\n            i32.const 1\n            (local.set $scratch)\n          )\n        )\n        (local.get $scratch)"
+            ]);
         case "lookup":
             var objStmts = codeGenExpr(expr.obj, locals, classes, globals);
             var classtype = expr.obj.a;
