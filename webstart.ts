@@ -46,7 +46,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
       const compiled = compile(program);
       const wasmSource = `(module
-        (import "mem" "heap" (memory 1))
+        (import "mem" "heap" (memory $0 1))
         (func $print_num (import "imports" "print_num") (param i32) (result i32))
         (func $print_none (import "imports" "print_none") (param i32) (result i32))
         (func $print_bool (import "imports" "print_bool") (param i32) (result i32))

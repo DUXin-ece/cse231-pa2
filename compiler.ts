@@ -282,7 +282,7 @@ function codeGenExpr(expr : Expr<Type>, locals: LocalEnv, classes: Map<string, C
       else if (expr.obj.tag=="call"){
       }
       var classtype:any = expr.obj.a
-      return [...selfcode, ...args, `call $${expr.name}$${classtype.class}`]
+      return [...selfcode,`call $Checkinit`, ...args, `call $${expr.name}$${classtype.class}`]
     case "literal":
       if(expr.literal.tag=="num"){
         return ["(i32.const " + expr.literal.value + ")"];

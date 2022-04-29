@@ -56,13 +56,24 @@ print(C().n)
 `
 
 const source =
-` class C(object):
-    def f(self: C) -> int:
-      if True:
-        return 0
-      else:
-        return
+`class LinkedList(object):
+  value : int = 0
+  next: LinkedList = None
+  def new(self: LinkedList, value: int, next: LinkedList) -> LinkedList:
+    self.value = value
+    self.next = next
+    return self
 
+  def sum(self: LinkedList) -> int:
+    if self.next is None:
+      return self.value
+    else:
+      return self.value + self.next.sum()
+
+l: LinkedList = None
+l = LinkedList().new(1, LinkedList().new(2, LinkedList().new(3, None)))
+print(l.sum())
+print(l.next.sum())
 `;
 
 console.log(source);
