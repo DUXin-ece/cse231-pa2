@@ -25,6 +25,16 @@ class C(object):
   
 C().none()
 `
+const hidden12 = 
+`
+class C(object):
+   def f(self: C) -> int:
+     if True:
+       return 0
+     else:
+       pass
+
+`
 
 const source =
 `

@@ -173,7 +173,7 @@ function traverseExpr(c, s) {
                     c.parent();
                     return {
                         tag: "uniexpr",
-                        op: ast_1.UniOp.Not,
+                        op: ast_1.UniOp.Pos,
                         expr: expr
                     };
                 case "-":
@@ -182,7 +182,7 @@ function traverseExpr(c, s) {
                     c.parent();
                     return {
                         tag: "uniexpr",
-                        op: ast_1.UniOp.Not,
+                        op: ast_1.UniOp.Neg,
                         expr: expr
                     };
                 case "not":

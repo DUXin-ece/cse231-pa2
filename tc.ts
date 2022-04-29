@@ -47,20 +47,20 @@ export function returnCheckFunDef(fundef:FunDef<Type>, env:TypeEnv):boolean{
                 var pathreturn:boolean[] = [];
                 var laststmt_if = s.ifbody[s.ifbody.length-1];
                 if(laststmt_if.tag!=="return"){
-                    throw new Error("Not all paths return");
+                    throw new Error("TYPE ERROR: Not all paths return");
                 }
                 for(var i=0;i<s.elifbody.length;i++){
                     var lenarr = s.elifbody[i].length;
                     if (s.elifbody[i][lenarr-1].tag!== "return"){
-                        throw new Error("Not all paths return");
+                        throw new Error("TYPE ERROR: Not all paths return");
                     }
                 }
                 var laststmt_else = s.elsebody[s.elsebody.length-1];
                 if(!laststmt_else){
-                    throw new Error("Not all paths return");
+                    throw new Error("TYPE ERROR: Not all paths return");
                 }
                 if(laststmt_else.tag!=="return"){
-                    throw new Error("Not all paths return");
+                    throw new Error("TYPE ERROR: Not all paths return");
                 }
                 
             }
@@ -109,7 +109,9 @@ export function typeCheckClassDef(aclass: ClassDef<null>, env: TypeEnv): ClassDe
         localEnv.funs.set(methodname, [m.params.map(param => param.type), m.ret]);
         env.funs.set(methodname, [m.params.map(param => param.type), m.ret]);
         classenv.set(methodname, m.ret);
-        typedmethods.push(typeCheckFunDef(m, localEnv));
+        var typedmethod = typeCheckFunDef(m, localEnv)
+        returnCheckFunDef(typedmethod, env);
+        typedmethods.push(typedmethod);
     });
     typedclass = {...aclass, a:{tag:"object", class: aclass.name}, fields: typedfields, methods: typedmethods}
     return typedclass;
