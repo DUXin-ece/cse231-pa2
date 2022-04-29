@@ -221,7 +221,7 @@ export function typeCheckStmts(stmts: Stmt<null>[], env: TypeEnv): Stmt<Type>[]{
                     else if(typedValue.a !== env.vars.get(stmt.name.name)){
                         throw new Error("TYPE ERROR: cannot assign value to id");
                     }
-                    typedStmts.push({...stmt, value: typedValue, a: typedValue.a})
+                    typedStmts.push({...stmt, value: typedValue, a: "none"})
                 }
                 else if(stmt.name.tag=="lookup"){
                     var typedValue = typeCheckExpr(stmt.value, env);
