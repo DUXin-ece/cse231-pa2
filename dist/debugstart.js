@@ -26,10 +26,12 @@ var tc_1 = require("./tc");
 var compiler = __importStar(require("./compiler"));
 var hidden2 = "\nclass C(object):\n  def f(self : C, x : int) -> int:\n    return x * 2\n\nc : C = None\nc = C()\nif c.f(c.f(2)):\n  pass\nelse:\n  pass\n";
 var hidden4 = "\nclass C(object):\n    def none(self: C) -> C:\n        return None\n  \nC().none()\n";
+var hidden11 = //return id
+ "\nclass C(object):\n  x : int = 0\n  def f(self: C) -> int:\n    x\n";
 var hidden12 = "\nclass C(object):\n   def f(self: C) -> int:\n     if True:\n       return 0\n     else:\n       pass\n\n";
 var hidden29 = //init get called
- "\nclass C(object):\n  n : int = 0\n  def __init__(self: C):\n    self.n = 1\n\n";
-var source = hidden29;
+ "\nclass C(object):\n  n : int = 0\n  def __init__(self: C):\n    self.n = 1\n\nprint(C().n)\n";
+var source = "class C(object):\n  def new(self: C, other: C) -> C:\n    return self\nC().new(None)\n";
 console.log(source);
 var tree = python_1.parser.parse(source);
 var cursor = tree.cursor();

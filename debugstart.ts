@@ -56,7 +56,11 @@ print(C().n)
 `
 
 const source =
-hidden29;
+`class C(object):
+  def new(self: C, other: C) -> C:
+    return self
+C().new(None)
+`;
 
 console.log(source);
 

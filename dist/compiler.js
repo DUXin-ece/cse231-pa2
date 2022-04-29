@@ -81,6 +81,7 @@ exports.codeGenClassinit = codeGenClassinit;
 function codeGenMethod(classdef, locals, classes, globals) {
     var wasmmethods = [];
     if (classdef.methods) {
+        var hasinit = false;
         classdef.methods.forEach(function (m) {
             var withParamsAndVariables = new Map(locals.entries());
             var variables = variableNames(m.body); //local variables
@@ -92,8 +93,19 @@ function codeGenMethod(classdef, locals, classes, globals) {
             m.body.map(function (s) { stmts.push(codeGenStmt(s, withParamsAndVariables, classes, globals)); });
             var flattenstmts = [].concat.apply([], stmts);
             var stmtsBody = flattenstmts.join("\n");
-            wasmmethods.push("(func $" + m.name + "$" + classdef.name + " " + params + " (result i32)\n          (local $scratch i32)\n          " + varDecls + "\n          " + stmtsBody + "\n          (i32.const 0))\n          ");
+            var wasmmethod;
+            if (m.name == "__init__") {
+                hasinit = true;
+                wasmmethod = "(func $" + m.name + "$" + classdef.name + " " + params + " (result i32)\n        (local $scratch i32)\n        " + varDecls + "\n        " + stmtsBody + "\n        (local.get $" + m.params[0].name + ")\n        (return)\n        (i32.const 0))\n        ";
+            }
+            else {
+                wasmmethod = "(func $" + m.name + "$" + classdef.name + " " + params + " (result i32)\n        (local $scratch i32)\n        " + varDecls + "\n        " + stmtsBody + "\n        (i32.const 0))\n        ";
+            }
+            wasmmethods.push(wasmmethod);
         });
+        if (hasinit == false) {
+            wasmmethods.push("(func $__init__$" + classdef.name + " (param $self i32) (result i32)\n      (local $scratch i32)\n      (nop)\n      (local.get $self)\n      (return)\n      (i32.const 0))\n      ");
+        }
     }
     return __spreadArrays(wasmmethods);
 }
@@ -229,6 +241,7 @@ function codeGenExpr(expr, locals, classes, globals) {
                 });
                 return __spreadArrays(initvals, [
                     "(global.get $heap)",
+                    "call $__init__$" + expr.name,
                     "(global.set $heap (i32.add (global.get $heap)(i32.const " + classdata.fields.length * 4 + ")))"
                 ]);
             }

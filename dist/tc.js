@@ -23,8 +23,9 @@ function typeCheckProgram(prog) {
     var typedclassdefs = [];
     var env = { vars: new Map(), funs: new Map(), classes: new Map(), retType: "none" };
     prog.fundefs.forEach(function (fundef) {
-        typedfundefs.push(typeCheckFunDef(fundef, env));
-        returnCheckFunDef(fundef, env);
+        var f = typeCheckFunDef(fundef, env);
+        returnCheckFunDef(f, env);
+        typedfundefs.push(f);
     });
     prog.classdefs.forEach(function (cls) {
         typedclassdefs.push(typeCheckClassDef(cls, env));
@@ -42,33 +43,40 @@ exports.typeCheckProgram = typeCheckProgram;
 function returnCheckFunDef(fundef, env) {
     var stmts_num = fundef.body.length;
     var laststmt = fundef.body[stmts_num - 1];
-    if (laststmt.tag == "return") {
-        return true;
-    }
-    else {
-        fundef.body.forEach(function (s) {
-            if (s.tag == "if") {
-                var pathreturn = [];
-                var laststmt_if = s.ifbody[s.ifbody.length - 1];
-                if (laststmt_if.tag !== "return") {
-                    throw new Error("TYPE ERROR: Not all paths return");
-                }
-                for (var i = 0; i < s.elifbody.length; i++) {
-                    var lenarr = s.elifbody[i].length;
-                    if (s.elifbody[i][lenarr - 1].tag !== "return") {
-                        throw new Error("TYPE ERROR: Not all paths return");
-                    }
-                }
-                var laststmt_else = s.elsebody[s.elsebody.length - 1];
-                if (!laststmt_else) {
-                    throw new Error("TYPE ERROR: Not all paths return");
-                }
-                if (laststmt_else.tag !== "return") {
+    if (fundef.a != "none") {
+        if (laststmt.tag == "return") {
+            return true;
+        }
+        else if (laststmt.tag == "if") {
+            var s = laststmt;
+            var pathreturn = [];
+            var laststmt_if = s.ifbody[s.ifbody.length - 1];
+            if (laststmt_if.tag !== "return") {
+                throw new Error("TYPE ERROR: Not all paths return");
+            }
+            for (var i = 0; i < s.elifbody.length; i++) {
+                var lenarr = s.elifbody[i].length;
+                if (s.elifbody[i][lenarr - 1].tag !== "return") {
                     throw new Error("TYPE ERROR: Not all paths return");
                 }
             }
-        });
-        return true;
+            var laststmt_else = s.elsebody[s.elsebody.length - 1];
+            if (!laststmt_else) {
+                throw new Error("TYPE ERROR: Not all paths return");
+            }
+            if (laststmt_else.tag !== "return") {
+                throw new Error("TYPE ERROR: Not all paths return");
+            }
+            return true;
+        }
+        else {
+            throw new Error("TYPE ERROR: not a return stmt");
+        }
+    }
+    else {
+        if (laststmt.tag == "return" && laststmt.ret != undefined) {
+            throw new Error("TYPE ERROR: should not return");
+        }
     }
 }
 exports.returnCheckFunDef = returnCheckFunDef;
@@ -394,6 +402,7 @@ function typeCheckExpr(expr, env) {
                         throw new Error("TYPE ERROR: mismatch");
                     }
                 }
+                else if (typeof t == "object" && newargs[i].a == "none") { }
                 else if (t !== newargs[i].a) {
                     throw new Error("TYPE ERROR: mismatch");
                 }

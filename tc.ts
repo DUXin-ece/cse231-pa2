@@ -414,6 +414,7 @@ export function typeCheckExpr(expr: Expr<null>, env: TypeEnv) : Expr<Type>{
                     var a:any = newargs[i].a
                     if(t.class !== a.class) {throw new Error("TYPE ERROR: mismatch")}
                 }
+                else if(typeof t =="object"&& newargs[i].a == "none"){}
                 else if(t!==newargs[i].a) {throw new Error("TYPE ERROR: mismatch")}
             })
             
