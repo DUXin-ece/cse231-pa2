@@ -26,7 +26,16 @@ class C(object):
 C().none()
 `
 
-const source =hidden4;
+const source =
+`
+x : int = 1
+y : int = 2
+if x < y:
+  pass
+else:
+  x = -x
+x
+`;
 
 console.log(source);
 

@@ -1,4 +1,5 @@
-import { VarInit, FunDef, ClassDef, Stmt, Expr, BinOp,Type } from "./ast";
+import { isConditionalExpression } from "typescript";
+import { VarInit, FunDef, ClassDef, Stmt, Expr, BinOp,Type, UniOp } from "./ast";
 import { parse, toprogram} from "./parser";
 import {typeCheckProgram} from "./tc";
 // https://learnxinyminutes.com/docs/wasm/
@@ -278,21 +279,40 @@ function codeGenExpr(expr : Expr<Type>, locals: LocalEnv, classes: Map<string, C
       const opStmt = codeGenBinOp(expr.op);
       return [...leftStmts, ...rightStmts, opStmt]
     case "uniexpr":
-      const boolexpr = codeGenExpr(expr.expr, locals, classes, globals);
-      return[
-        ...boolexpr,
-        `(if
-          (then
-            i32.const 0
-            (local.set $scratch)
+      if(expr.op ==UniOp.Pos){
+        var intexpr = codeGenExpr(expr.expr, locals, classes, globals);
+        return [
+          `(i32.const 0)`,
+          ...intexpr,
+          `(i32.add)`
+        ]
+      }
+      else if(expr.op == UniOp.Neg){
+        var intexpr = codeGenExpr(expr.expr, locals, classes, globals);
+        return [
+          `(i32.const 0)`,
+          ...intexpr,
+          `(i32.sub)`
+        ]
+      }
+      else{
+        const boolexpr = codeGenExpr(expr.expr, locals, classes, globals);
+        return[
+          ...boolexpr,
+          `(if
+            (then
+              i32.const 0
+              (local.set $scratch)
+            )
+            (else
+              i32.const 1
+              (local.set $scratch)
+            )
           )
-          (else
-            i32.const 1
-            (local.set $scratch)
-          )
-        )
-        (local.get $scratch)`
-      ]
+          (local.get $scratch)`
+        ]
+      }
+      
     case "lookup":
       const objStmts = codeGenExpr(expr.obj, locals, classes, globals);
       var classtype:any = expr.obj.a;

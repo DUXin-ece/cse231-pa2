@@ -61,14 +61,11 @@ exports.typeCheck = typeCheck;
 // Modify run to use `importObject` (imported above) to use for printing
 function run(source) {
     return __awaiter(this, void 0, void 0, function () {
-        var program, parsed, returnType, returnExpr, lastExpr, compiled, wasmSource, wabtApi, parsedWat, binary, memory, importObjectPlus, wasmModule, e_1;
+        var program, parsed, returnType, returnExpr, lastExpr, compiled, wasmSource, wabtApi, parsedWat, binary, memory, importObjectPlus, wasmModule;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
                     program = source;
-                    _a.label = 1;
-                case 1:
-                    _a.trys.push([1, 4, , 5]);
                     parsed = parser_1.parse(program);
                     returnType = "";
                     returnExpr = "";
@@ -78,9 +75,9 @@ function run(source) {
                         returnExpr = "(local.get $scratch)";
                     }
                     compiled = compiler_1.compile(program);
-                    wasmSource = "(module\n      (import \"mem\" \"heap\" (memory 1))\n      (func $print_num (import \"imports\" \"print_num\") (param i32) (result i32))\n      (func $print_none (import \"imports\" \"print_none\") (param i32) (result i32))\n      (func $print_bool (import \"imports\" \"print_bool\") (param i32) (result i32))\n      (func $Checkinit (import \"imports\" \"Checkinit\") (param i32) (result i32))\n      (func $abs (import \"imports\" \"abs\") (param i32) (result i32))\n      (func $max (import \"imports\" \"max\") (param i32 i32) (result i32))\n      (func $min (import \"imports\" \"min\") (param i32 i32) (result i32))\n      (func $pow (import \"imports\" \"pow\") (param i32 i32) (result i32))\n      " + compiled.funcdef + "\n      " + compiled.varinits + "\n      " + compiled.methoddef + "\n      (func (export \"_start\") " + returnType + "\n        (local $scratch i32 )\n        " + compiled.wasmSource + "\n        " + returnExpr + "\n      )\n    )";
+                    wasmSource = "(module\n    (import \"mem\" \"heap\" (memory 1))\n    (func $print_num (import \"imports\" \"print_num\") (param i32) (result i32))\n    (func $print_none (import \"imports\" \"print_none\") (param i32) (result i32))\n    (func $print_bool (import \"imports\" \"print_bool\") (param i32) (result i32))\n    (func $Checkinit (import \"imports\" \"Checkinit\") (param i32) (result i32))\n    (func $abs (import \"imports\" \"abs\") (param i32) (result i32))\n    (func $max (import \"imports\" \"max\") (param i32 i32) (result i32))\n    (func $min (import \"imports\" \"min\") (param i32 i32) (result i32))\n    (func $pow (import \"imports\" \"pow\") (param i32 i32) (result i32))\n    " + compiled.funcdef + "\n    " + compiled.varinits + "\n    " + compiled.methoddef + "\n    (func (export \"_start\") " + returnType + "\n      (local $scratch i32 )\n      " + compiled.wasmSource + "\n      " + returnExpr + "\n    )\n  )";
                     return [4 /*yield*/, wabt_1.default()];
-                case 2:
+                case 1:
                     wabtApi = _a.sent();
                     parsedWat = wabtApi.parseWat("example", wasmSource);
                     binary = parsedWat.toBinary({});
@@ -94,15 +91,10 @@ function run(source) {
                         return obj;
                     };
                     return [4 /*yield*/, WebAssembly.instantiate(binary.buffer, importObjectPlus)];
-                case 3:
+                case 2:
                     wasmModule = _a.sent();
                     wasmModule.instance.exports._start();
-                    return [3 /*break*/, 5];
-                case 4:
-                    e_1 = _a.sent();
-                    console.error(e_1);
-                    return [3 /*break*/, 5];
-                case 5: return [2 /*return*/];
+                    return [2 /*return*/];
             }
         });
     });

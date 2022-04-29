@@ -168,25 +168,23 @@ export function traverseExpr(c : TreeCursor, s : string) : Expr<null> {
         switch(uniop){
           case "+" :
             c.nextSibling();
-            var number = Number(uniop + s.substring(c.from, c.to));
-            if(isNaN(number)){
-              throw new Error("PARSE ERROR: could not parse this UinaryExpression");
-            }
+            var expr = traverseExpr(c,s);
+            
             c.parent();
             return {
-              tag: "literal",
-              literal: {tag:"num", value: number} 
+              tag: "uniexpr",
+              op: UniOp.Pos,
+              expr: expr
             }
           case "-":
             c.nextSibling();
-            var number = Number(uniop + s.substring(c.from, c.to));
-            if(isNaN(number)){
-              throw new Error("PARSE ERROR: could not parse this UinaryExpression");
-            }
+            var expr = traverseExpr(c,s);
+            
             c.parent();
             return {
-              tag: "literal",
-              literal: {tag:"num", value: number} 
+              tag: "uniexpr",
+              op: UniOp.Neg,
+              expr: expr
             }
           case "not":
             c.nextSibling();

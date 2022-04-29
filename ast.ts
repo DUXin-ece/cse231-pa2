@@ -38,7 +38,7 @@ export type Literal<A> =
   | {a?:A, tag: "none"}
 
 export enum BinOp{Plus="+", Minus="-", Mul="*", Eq="==", Neq="!=", Nlt=">=", Ngt="<=", Gt=">", Lt="<", Is="is"}
-export enum UniOp{Not = "not"}
+export enum UniOp{Not = "not", Pos = "+", Neg="-"}
 
 export type Type = 
     "int"

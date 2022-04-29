@@ -292,13 +292,18 @@ function typeCheckExpr(expr, env) {
             var func = env.funs.get(expr.name);
             return __assign(__assign({}, expr), { a: func[1] }); // 1 is return type
         case "uniexpr":
-            var boolexpr = typeCheckExpr(expr.expr, env);
-            if (boolexpr.a !== "bool") {
-                throw new Error("TYPE ERROR: Not a boolean expression");
+            var uniexpr = typeCheckExpr(expr.expr, env);
+            if (expr.op == ast_1.UniOp.Pos || expr.op == ast_1.UniOp.Neg) {
+                if (uniexpr.a !== "int") {
+                    throw new Error("TYPE ERROR: Not a int expression");
+                }
             }
             else {
-                return __assign(__assign({}, expr), { a: boolexpr.a });
+                if (uniexpr.a !== "bool") {
+                    throw new Error("TYPE ERROR: Not a boolean expression");
+                }
             }
+            return __assign(__assign({}, expr), { a: uniexpr.a });
         case "binexpr":
             var left = typeCheckExpr(expr.left, env);
             var right = typeCheckExpr(expr.right, env);

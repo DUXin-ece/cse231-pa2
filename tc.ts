@@ -1,4 +1,4 @@
-import {Program, Expr, Stmt, Literal,TypedVar,Type, VarInit, FunDef, ClassDef, BinOp} from './ast';
+import {Program, Expr, Stmt, Literal,TypedVar,Type, VarInit, FunDef, ClassDef, BinOp, UniOp} from './ast';
 import { NONE } from './tests/helpers.test';
 
 type TypeEnv = {
@@ -303,13 +303,18 @@ export function typeCheckExpr(expr: Expr<null>, env: TypeEnv) : Expr<Type>{
             var func = env.funs.get(expr.name);
             return {...expr, a: func[1]}  // 1 is return type
         case "uniexpr":
-            const boolexpr = typeCheckExpr(expr.expr, env);
-            if(boolexpr.a!=="bool"){
-                throw new Error("TYPE ERROR: Not a boolean expression");
+            const uniexpr = typeCheckExpr(expr.expr, env);
+            if (expr.op == UniOp.Pos || expr.op == UniOp.Neg){
+                if(uniexpr.a!=="int"){
+                    throw new Error("TYPE ERROR: Not a int expression");
+                }
             }
             else{
-                return {...expr, a: boolexpr.a};
+                if(uniexpr.a!=="bool"){
+                    throw new Error("TYPE ERROR: Not a boolean expression");
+                }
             }
+            return {...expr, a: uniexpr.a};
         case "binexpr":
             const left = typeCheckExpr(expr.left, env);
             const right = typeCheckExpr(expr.right, env);

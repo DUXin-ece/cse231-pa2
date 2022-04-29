@@ -17,5 +17,7 @@ var BinOp;
 var UniOp;
 (function (UniOp) {
     UniOp["Not"] = "not";
+    UniOp["Pos"] = "+";
+    UniOp["Neg"] = "-";
 })(UniOp = exports.UniOp || (exports.UniOp = {}));
 //# sourceMappingURL=ast.js.map

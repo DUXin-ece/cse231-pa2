@@ -279,10 +279,28 @@ function codeGenExpr(expr, locals, classes, globals) {
             var opStmt = codeGenBinOp(expr.op);
             return __spreadArrays(leftStmts, rightStmts, [opStmt]);
         case "uniexpr":
-            var boolexpr = codeGenExpr(expr.expr, locals, classes, globals);
-            return __spreadArrays(boolexpr, [
-                "(if\n          (then\n            i32.const 0\n            (local.set $scratch)\n          )\n          (else\n            i32.const 1\n            (local.set $scratch)\n          )\n        )\n        (local.get $scratch)"
-            ]);
+            if (expr.op == ast_1.UniOp.Pos) {
+                var intexpr = codeGenExpr(expr.expr, locals, classes, globals);
+                return __spreadArrays([
+                    "(i32.const 0)"
+                ], intexpr, [
+                    "(i32.add)"
+                ]);
+            }
+            else if (expr.op == ast_1.UniOp.Neg) {
+                var intexpr = codeGenExpr(expr.expr, locals, classes, globals);
+                return __spreadArrays([
+                    "(i32.const 0)"
+                ], intexpr, [
+                    "(i32.sub)"
+                ]);
+            }
+            else {
+                var boolexpr = codeGenExpr(expr.expr, locals, classes, globals);
+                return __spreadArrays(boolexpr, [
+                    "(if\n            (then\n              i32.const 0\n              (local.set $scratch)\n            )\n            (else\n              i32.const 1\n              (local.set $scratch)\n            )\n          )\n          (local.get $scratch)"
+                ]);
+            }
         case "lookup":
             var objStmts = codeGenExpr(expr.obj, locals, classes, globals);
             var classtype = expr.obj.a;

@@ -26,7 +26,7 @@ var tc_1 = require("./tc");
 var compiler = __importStar(require("./compiler"));
 var hidden2 = "\nclass C(object):\n  def f(self : C, x : int) -> int:\n    return x * 2\n\nc : C = None\nc = C()\nif c.f(c.f(2)):\n  pass\nelse:\n  pass\n";
 var hidden4 = "\nclass C(object):\n    def none(self: C) -> C:\n        return None\n  \nC().none()\n";
-var source = hidden4;
+var source = "\nx : int = 1\ny : int = 2\nif x < y:\n  pass\nelse:\n  x = -x\nx\n";
 console.log(source);
 var tree = python_1.parser.parse(source);
 var cursor = tree.cursor();
