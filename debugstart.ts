@@ -56,10 +56,13 @@ print(C().n)
 `
 
 const source =
-`class C(object):
-  def new(self: C, other: C) -> C:
-    return self
-C().new(None)
+` class C(object):
+    def f(self: C) -> int:
+      if True:
+        return 0
+      else:
+        return
+
 `;
 
 console.log(source);

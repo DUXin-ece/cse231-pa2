@@ -253,13 +253,20 @@ function traverseStmt(c, s) {
             };
         case "ReturnStatement":
             c.firstChild(); //return
-            c.nextSibling(); //expr
-            var returnexpr = traverseExpr(c, s);
-            c.parent();
-            return {
-                tag: "return",
-                ret: returnexpr,
-            };
+            if (c.nextSibling()) {
+                var returnexpr = traverseExpr(c, s);
+                c.parent();
+                return {
+                    tag: "return",
+                    ret: returnexpr,
+                };
+            }
+            else {
+                return {
+                    tag: "return",
+                    ret: { tag: "literal", literal: { tag: "none" } }
+                };
+            }
         case "AssignStatement":
             c.firstChild(); // go to name
             var lvalue = traverseExpr(c, s);
