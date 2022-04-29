@@ -25,6 +25,14 @@ class C(object):
   
 C().none()
 `
+const hidden11 = //return id
+`
+class C(object):
+  x : int = 0
+  def f(self: C) -> int:
+    x
+`
+
 const hidden12 = 
 `
 class C(object):
@@ -35,6 +43,7 @@ class C(object):
        pass
 
 `
+
 
 const hidden29 = //init get called
 `
