@@ -277,7 +277,7 @@ function codeGenExpr(expr : Expr<Type>, locals: LocalEnv, classes: Map<string, C
       if(expr.obj.tag=="id" || expr.obj.tag=="method"){
       }
       else if(expr.obj.tag=="lookup"){
-        selfcode.pop();
+        
       }
       else if (expr.obj.tag=="call"){
       }
