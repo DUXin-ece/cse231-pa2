@@ -36,16 +36,18 @@ class C(object):
 
 `
 
-const source =
+const hidden29 = //init get called
 `
-x : int = 1
-y : int = 2
-if x < y:
-  pass
-else:
-  x = -x
-x
-`;
+class C(object):
+  n : int = 0
+  def __init__(self: C):
+    self.n = 1
+
+print(C().n)
+`
+
+const source =
+hidden29;
 
 console.log(source);
 

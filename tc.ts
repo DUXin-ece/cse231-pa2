@@ -104,18 +104,37 @@ export function typeCheckClassDef(aclass: ClassDef<null>, env: TypeEnv): ClassDe
     env.classes.set(aclass.name, classenv);
     localEnv.classes.set(aclass.name, classenv);
     typedfields = typeCheckVarInits(aclass.fields, localEnv);
+    var initname = "__init__"+"$"+aclass.name;
     aclass.methods.forEach(m =>{
         var methodname = m.name + "$"+ aclass.name;
         localEnv.funs.set(methodname, [m.params.map(param => param.type), m.ret]);
         env.funs.set(methodname, [m.params.map(param => param.type), m.ret]);
         classenv.set(methodname, m.ret);
         var typedmethod = typeCheckFunDef(m, localEnv)
+        if (methodname == initname){
+            if(typedmethod.params.length!=1 ){
+                throw new Error("TYPE ERROR: __init__ only accept one arg");
+            }
+            if(typeof typedmethod.params[0].a !="object"){
+                throw new Error("TYPE ERROR: __init__ should have arg type same as caller")
+            }
+            else{
+                if(typedmethod.params[0].a.class != aclass.name){
+                    throw new Error("TYPE ERROR: __init__ should have arg type same as caller")
+                }
+            }
+            if(typedmethod.a!="none"){
+                throw new Error("TYPE ERROR: __init__ should return none");
+            }
+        }
         returnCheckFunDef(typedmethod, env);
         typedmethods.push(typedmethod);
     });
     typedclass = {...aclass, a:{tag:"object", class: aclass.name}, fields: typedfields, methods: typedmethods}
     return typedclass;
 }
+
+
 
 export function typeCheckFunDef(fun: FunDef<null>, env: TypeEnv):FunDef<Type>{
     // add params to env
@@ -141,7 +160,7 @@ export function typeCheckFunDef(fun: FunDef<null>, env: TypeEnv):FunDef<Type>{
     // check body
     // make sure every path has the expected return type
     const typedStmts = typeCheckStmts(fun.body, localEnv);
-    return {...fun, params: typedParams,  body: typedStmts};
+    return {...fun, params: typedParams,  body: typedStmts, a:fun.ret};
 
 }
 

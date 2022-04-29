@@ -95,6 +95,7 @@ export function codeGenClassinit(classdef:ClassDef<Type>, locals:LocalEnv, class
 export function codeGenMethod(classdef:ClassDef<Type>, locals:LocalEnv, classes: Map<string, ClassDef<Type>>, globals: Set<string> ): Array<string>{
   var wasmmethods:Array<string> = [];
   if (classdef.methods) {
+    var hasinit:boolean = false;
     classdef.methods.forEach(m=>{
       var withParamsAndVariables = new Map<string, boolean>(locals.entries());
       var variables = variableNames(m.body);  //local variables
@@ -106,13 +107,38 @@ export function codeGenMethod(classdef:ClassDef<Type>, locals:LocalEnv, classes:
       m.body.map(s=>{stmts.push(codeGenStmt(s, withParamsAndVariables, classes, globals))});
       var flattenstmts = [].concat(...stmts)
       var stmtsBody = flattenstmts.join("\n");
-      wasmmethods.push(`(func $${m.name}$${classdef.name} ${params} (result i32)
-          (local $scratch i32)
-          ${varDecls}
-          ${stmtsBody}
-          (i32.const 0))
-          `);
+      var wasmmethod;
+      if(m.name=="__init__"){
+        hasinit = true;
+        wasmmethod = `(func $${m.name}$${classdef.name} ${params} (result i32)
+        (local $scratch i32)
+        ${varDecls}
+        ${stmtsBody}
+        (local.get $${m.params[0].name})
+        (return)
+        (i32.const 0))
+        `
+      }
+      else{
+        wasmmethod = `(func $${m.name}$${classdef.name} ${params} (result i32)
+        (local $scratch i32)
+        ${varDecls}
+        ${stmtsBody}
+        (i32.const 0))
+        `
+      }
+      wasmmethods.push(wasmmethod);
     })
+    if(hasinit==false){
+      wasmmethods.push(
+      `(func $__init__$${classdef.name} (param $self i32) (result i32)
+      (local $scratch i32)
+      (nop)
+      (local.get $self)
+      (return)
+      (i32.const 0))
+      `)
+    }
   }
   return [...wasmmethods];
 }
@@ -228,11 +254,13 @@ function codeGenExpr(expr : Expr<Type>, locals: LocalEnv, classes: Map<string, C
             `(i32.add (i32.const ${offset}))`,
             ...codeGenVarInit(f, locals, classes, globals),
             `i32.store`
+           
           ];
         });
         return [
           ...initvals,
           `(global.get $heap)`,
+          `call $__init__$${expr.name}`,
           `(global.set $heap (i32.add (global.get $heap)(i32.const ${classdata.fields.length*4})))`
         ]
       }

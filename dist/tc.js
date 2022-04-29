@@ -51,20 +51,20 @@ function returnCheckFunDef(fundef, env) {
                 var pathreturn = [];
                 var laststmt_if = s.ifbody[s.ifbody.length - 1];
                 if (laststmt_if.tag !== "return") {
-                    throw new Error("Not all paths return");
+                    throw new Error("TYPE ERROR: Not all paths return");
                 }
                 for (var i = 0; i < s.elifbody.length; i++) {
                     var lenarr = s.elifbody[i].length;
                     if (s.elifbody[i][lenarr - 1].tag !== "return") {
-                        throw new Error("Not all paths return");
+                        throw new Error("TYPE ERROR: Not all paths return");
                     }
                 }
                 var laststmt_else = s.elsebody[s.elsebody.length - 1];
                 if (!laststmt_else) {
-                    throw new Error("Not all paths return");
+                    throw new Error("TYPE ERROR: Not all paths return");
                 }
                 if (laststmt_else.tag !== "return") {
-                    throw new Error("Not all paths return");
+                    throw new Error("TYPE ERROR: Not all paths return");
                 }
             }
         });
@@ -106,12 +106,31 @@ function typeCheckClassDef(aclass, env) {
     env.classes.set(aclass.name, classenv);
     localEnv.classes.set(aclass.name, classenv);
     typedfields = typeCheckVarInits(aclass.fields, localEnv);
+    var initname = "__init__" + "$" + aclass.name;
     aclass.methods.forEach(function (m) {
         var methodname = m.name + "$" + aclass.name;
         localEnv.funs.set(methodname, [m.params.map(function (param) { return param.type; }), m.ret]);
         env.funs.set(methodname, [m.params.map(function (param) { return param.type; }), m.ret]);
         classenv.set(methodname, m.ret);
-        typedmethods.push(typeCheckFunDef(m, localEnv));
+        var typedmethod = typeCheckFunDef(m, localEnv);
+        if (methodname == initname) {
+            if (typedmethod.params.length != 1) {
+                throw new Error("TYPE ERROR: __init__ only accept one arg");
+            }
+            if (typeof typedmethod.params[0].a != "object") {
+                throw new Error("TYPE ERROR: __init__ should have arg type same as caller");
+            }
+            else {
+                if (typedmethod.params[0].a.class != aclass.name) {
+                    throw new Error("TYPE ERROR: __init__ should have arg type same as caller");
+                }
+            }
+            if (typedmethod.a != "none") {
+                throw new Error("TYPE ERROR: __init__ should return none");
+            }
+        }
+        returnCheckFunDef(typedmethod, env);
+        typedmethods.push(typedmethod);
     });
     typedclass = __assign(__assign({}, aclass), { a: { tag: "object", class: aclass.name }, fields: typedfields, methods: typedmethods });
     return typedclass;
@@ -138,7 +157,7 @@ function typeCheckFunDef(fun, env) {
     // check body
     // make sure every path has the expected return type
     var typedStmts = typeCheckStmts(fun.body, localEnv);
-    return __assign(__assign({}, fun), { params: typedParams, body: typedStmts });
+    return __assign(__assign({}, fun), { params: typedParams, body: typedStmts, a: fun.ret });
 }
 exports.typeCheckFunDef = typeCheckFunDef;
 function typeCheckParams(params) {
